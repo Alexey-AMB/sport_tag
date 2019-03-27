@@ -1,16 +1,16 @@
 /******************************************************************************
 
- @file  board_key.h
+ @file       board_key.h
 
  @brief This file contains the SRF06EB Key Service definitions and prototypes
         prototypes.
 
- Group: WCS, BTS
- Target Device: cc2640r2
+ Group: CMCU, SCS
+ Target Device: CC2640R2
 
  ******************************************************************************
  
- Copyright (c) 2014-2019, Texas Instruments Incorporated
+ Copyright (c) 2014-2018, Texas Instruments Incorporated
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,8 @@
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  ******************************************************************************
- 
- 
+ Release Name: simplelink_cc2640r2_sdk_02_30_00_28
+ Release Date: 2018-10-15 15:51:38
  *****************************************************************************/
 
 #ifndef BOARD_KEY_H
@@ -53,7 +53,7 @@ extern "C" {
 #endif
 
 /*********************************************************************
- * INCLUDES
+ * INCLUDES *
  */
 
 /*********************************************************************
@@ -95,7 +95,17 @@ typedef void (*keysPressedCB_t)(uint8_t keysPressed);
  * @return  none
  */
 void Board_initKeys(keysPressedCB_t appKeyCB);
+//
+//my_test
+void Board_initLeds(void);
 
+void Board_setLed0_my(uint8_t iVal);
+void Board_setLed1_my(uint8_t iVal);
+void Board_setCS(uint8_t iVal);
+void Board_setRES(uint8_t iVal);
+uint8_t Board_getLed_my(void);
+void Task_sleepMS(uint32_t period); //task sleep in miliseconds
+void Board_Power_down(void);
 /*********************************************************************
 *********************************************************************/
 

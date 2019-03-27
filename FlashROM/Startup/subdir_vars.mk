@@ -6,32 +6,44 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/target/board.c \
+../Startup/CC2640R2_LAUNCHXL.c \
+../Startup/CC2640R2_LAUNCHXL_fxns.c \
+../Startup/ccfg_app_ble.c \
 ../Startup/find_stack_entry.c \
 ../Startup/main.c 
 
 C_DEPS += \
-./Startup/board.d \
+./Startup/CC2640R2_LAUNCHXL.d \
+./Startup/CC2640R2_LAUNCHXL_fxns.d \
+./Startup/ccfg_app_ble.d \
 ./Startup/find_stack_entry.d \
 ./Startup/main.d 
 
 OBJS += \
-./Startup/board.obj \
+./Startup/CC2640R2_LAUNCHXL.obj \
+./Startup/CC2640R2_LAUNCHXL_fxns.obj \
+./Startup/ccfg_app_ble.obj \
 ./Startup/find_stack_entry.obj \
 ./Startup/main.obj 
 
 OBJS__QUOTED += \
-"Startup\board.obj" \
+"Startup\CC2640R2_LAUNCHXL.obj" \
+"Startup\CC2640R2_LAUNCHXL_fxns.obj" \
+"Startup\ccfg_app_ble.obj" \
 "Startup\find_stack_entry.obj" \
 "Startup\main.obj" 
 
 C_DEPS__QUOTED += \
-"Startup\board.d" \
+"Startup\CC2640R2_LAUNCHXL.d" \
+"Startup\CC2640R2_LAUNCHXL_fxns.d" \
+"Startup\ccfg_app_ble.d" \
 "Startup\find_stack_entry.d" \
 "Startup\main.d" 
 
 C_SRCS__QUOTED += \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/target/board.c" \
+"../Startup/CC2640R2_LAUNCHXL.c" \
+"../Startup/CC2640R2_LAUNCHXL_fxns.c" \
+"../Startup/ccfg_app_ble.c" \
 "../Startup/find_stack_entry.c" \
 "../Startup/main.c" 
 

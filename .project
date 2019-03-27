@@ -158,11 +158,6 @@
 			<locationURI>SRC_BLE_DIR/profiles/dev_info/devinfoservice.h</locationURI>
 		</link>
 		<link>
-			<name>Startup/board.c</name>
-			<type>1</type>
-			<locationURI>SRC_BLE_DIR/target/board.c</locationURI>
-		</link>
-		<link>
 			<name>TOOLS/cc26xx_app_oad.cmd</name>
 			<type>1</type>
 			<locationURI>SRC_BLE_DIR/common/cc26xx/ccs/cc26xx_app_oad.cmd</locationURI>

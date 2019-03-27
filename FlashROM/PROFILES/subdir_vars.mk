@@ -9,6 +9,7 @@ C_SRCS += \
 D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/profiles/dev_info/cc26xx/devinfoservice.c \
 ../PROFILES/gatt_uuid.c \
 ../PROFILES/gattservapp_util.c \
+../PROFILES/myDataTransfer.c \
 ../PROFILES/peripheral_observer.c \
 ../PROFILES/simple_gatt_profile.c 
 
@@ -16,6 +17,7 @@ C_DEPS += \
 ./PROFILES/devinfoservice.d \
 ./PROFILES/gatt_uuid.d \
 ./PROFILES/gattservapp_util.d \
+./PROFILES/myDataTransfer.d \
 ./PROFILES/peripheral_observer.d \
 ./PROFILES/simple_gatt_profile.d 
 
@@ -23,6 +25,7 @@ OBJS += \
 ./PROFILES/devinfoservice.obj \
 ./PROFILES/gatt_uuid.obj \
 ./PROFILES/gattservapp_util.obj \
+./PROFILES/myDataTransfer.obj \
 ./PROFILES/peripheral_observer.obj \
 ./PROFILES/simple_gatt_profile.obj 
 
@@ -30,6 +33,7 @@ OBJS__QUOTED += \
 "PROFILES\devinfoservice.obj" \
 "PROFILES\gatt_uuid.obj" \
 "PROFILES\gattservapp_util.obj" \
+"PROFILES\myDataTransfer.obj" \
 "PROFILES\peripheral_observer.obj" \
 "PROFILES\simple_gatt_profile.obj" 
 
@@ -37,6 +41,7 @@ C_DEPS__QUOTED += \
 "PROFILES\devinfoservice.d" \
 "PROFILES\gatt_uuid.d" \
 "PROFILES\gattservapp_util.d" \
+"PROFILES\myDataTransfer.d" \
 "PROFILES\peripheral_observer.d" \
 "PROFILES\simple_gatt_profile.d" 
 
@@ -44,6 +49,7 @@ C_SRCS__QUOTED += \
 "D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/profiles/dev_info/cc26xx/devinfoservice.c" \
 "../PROFILES/gatt_uuid.c" \
 "../PROFILES/gattservapp_util.c" \
+"../PROFILES/myDataTransfer.c" \
 "../PROFILES/peripheral_observer.c" \
 "../PROFILES/simple_gatt_profile.c" 
 

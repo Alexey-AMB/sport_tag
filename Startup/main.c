@@ -166,32 +166,25 @@ int main()
   /* Initialize ICall module */
   ICall_init();
 
-  {
-    /* Find stack entry page */
-    uint32_t stackAddr = findStackBoundaryAddr();
 
-    if(stackAddr == INVALID_ADDR)
-    {
+  /* Find stack entry page */
+  uint32_t stackAddr = findStackBoundaryAddr();
+
+  if(stackAddr == INVALID_ADDR)
+  {
       // If we cannot find the stack start address, exit
       ICall_abort();
-    }
-
-    /* set the stack image header based on the stack addr */
-    stackImageHeader = (imgHdr_t *)stackAddr;
-
-    /* Start tasks of external images - Priority 5 */
-    const ICall_RemoteTask_t remoteTaskTbl[] =
-    {
-      (ICall_RemoteTaskEntry) (stackImageHeader->fixedHdr.prgEntry),
-      5,
-      1000,
-      &user0Cfg
-    };
-
-    /* Start tasks of external images - Priority 5 */
-    ICall_createRemoteTasksAtRuntime((ICall_RemoteTask_t *) remoteTaskTbl,
-                                   (sizeof(remoteTaskTbl)/sizeof(ICall_RemoteTask_t)));
   }
+
+  /* set the stack image header based on the stack addr */
+  stackImageHeader = (imgHdr_t *)stackAddr;
+
+  /* Start tasks of external images - Priority 5 */
+  const ICall_RemoteTask_t remoteTaskTbl[] = {(ICall_RemoteTaskEntry) (stackImageHeader->fixedHdr.prgEntry), 5, 1000, &user0Cfg};
+
+  /* Start tasks of external images - Priority 5 */
+  ICall_createRemoteTasksAtRuntime((ICall_RemoteTask_t *) remoteTaskTbl, (sizeof(remoteTaskTbl)/sizeof(ICall_RemoteTask_t)));
+
 
   /* Kick off profile - Priority 3 */
   GAPRole_createTask();
