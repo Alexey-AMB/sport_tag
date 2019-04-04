@@ -47,7 +47,7 @@
 #include "icall_ble_api.h"
 
 #include "myDataTransfer.h"
-
+#include "simple_gatt_profile.h"
 
 /*********************************************************************
  * MACROS

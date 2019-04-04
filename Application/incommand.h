@@ -44,7 +44,7 @@ typedef enum WORKMODE
 
 
 #pragma pack(push, 1)
-typedef struct SPORT_TAG_SETTINGS   //len=42
+typedef struct SPORT_TAG_SETTINGS
 {
     WORKMODE    mode_tag;           //режим работы
     char        name_tag[20];       //им€ метки
@@ -53,9 +53,13 @@ typedef struct SPORT_TAG_SETTINGS   //len=42
     uint8_t     powerble_tag;       //мощность BLE передатчика метки от 0 (-21 дЅ) до 12 (+5 дЅ) см ll.h строка 404
     int8_t     treshold_tag;       //порог чувствительности метки
     char        password_tag[10];   //пароль BLE
+    uint8_t     signature;          //сигнатура SIGNATURE_EPROM_SETTINGS
+} SPORT_TAG_SETTINGS;
+#pragma pack(pop)
 
-    //USER_SETTINGS        //len=103
-
+#pragma pack(push, 1)
+typedef struct USER_SETTINGS
+{
     char        fam[20];        //фамили€
     char        imj[20];        //им€
     char        otch[20];       //отчество
@@ -69,6 +73,5 @@ typedef struct SPORT_TAG_SETTINGS   //len=42
     char        starttime[7];   //врем€ старта
     bool        lgota;          //есть ли льгота
     bool        arenda;         //свой чип или арендованный
-    uint8_t     signature;      //сигнатура SIGNATURE_EPROM_SETTINGS
-}SPORT_TAG_SETTINGS;
+}USER_SETTINGS;
 #pragma pack(pop)

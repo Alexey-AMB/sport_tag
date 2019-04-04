@@ -63,17 +63,14 @@ extern "C" {
 /*********************************************************************
  * CONSTANTS
  */
-#define KEY_LEFT                 0x0001
-#define KEY_RIGHT                0x0002
-#define KEY_LEFT_LONG            0x0004
-#define KEY_RIGHT_LONG           0x0008
-#define KEY_LEFT_VERYLONG        0x0010
-#define KEY_RIGHT_VERYLONG       0x0020
+#define KEY_SELECT            0x0001
+#define KEY_UP                0x0002
+#define KEY_DOWN              0x0004
+#define KEY_LEFT              0x0008
+#define KEY_RIGHT             0x0010
 
 // Debounce timeout in milliseconds
-#define KEY_DEBOUNCE_TIMEOUT_SHORT      100
-#define KEY_DEBOUNCE_TIMEOUT_LONG       2000
-#define KEY_DEBOUNCE_TIMEOUT_VERYLONG   5000
+#define KEY_DEBOUNCE_TIMEOUT  200
 
 /*********************************************************************
  * TYPEDEFS
@@ -105,7 +102,7 @@ void Board_initLeds(void);
 void Board_setLed0_my(uint8_t iVal);
 void Board_setLed1_my(uint8_t iVal);
 void Board_setCS(uint8_t iVal);
-void Board_setVibro(uint8_t iVal);
+void Board_setRES(uint8_t iVal);
 uint8_t Board_getLed_my(void);
 void Task_sleepMS(uint32_t period); //task sleep in miliseconds
 void Board_Power_down(void);
