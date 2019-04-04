@@ -1,0 +1,8 @@
+/FlashROM/
+*.obj
+*.aem3
+*.mk
+*.hex
+*.bin
+*.map
+*.opt
