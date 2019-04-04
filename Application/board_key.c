@@ -70,11 +70,13 @@
 /*********************************************************************
  * TYPEDEFS
  */
-
+#define VIBRO_N         Board_SPI_MASTER_READY
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
-static void Board_keyChangeHandler(UArg a0);
+static void Board_keyChangeHandler_short(UArg a0);
+static void Board_keyChangeHandler_long(UArg a0);
+static void Board_keyChangeHandler_verylong(UArg a0);
 static void Board_keyCallback(PIN_Handle hPin, PIN_Id pinId);
 
 /*******************************************************************************
@@ -89,7 +91,9 @@ static void Board_keyCallback(PIN_Handle hPin, PIN_Id pinId);
 static uint8_t keysPressed;
 
 // Key debounce clock
-static Clock_Struct keyChangeClock;
+static Clock_Struct keyChangeClock_short;
+static Clock_Struct keyChangeClock_long;
+static Clock_Struct keyChangeClock_verylong;
 
 // Pointer to application callback
 keysPressedCB_t appKeyChangeHandler = NULL;
@@ -187,14 +191,13 @@ void Board_initKeys(keysPressedCB_t appKeyCB)
 #endif //POWER_SAVING
 
     // Setup keycallback for keys
-    Util_constructClock(&keyChangeClock, Board_keyChangeHandler,
-                        KEY_DEBOUNCE_TIMEOUT, 0, false, 0);
+    Util_constructClock(&keyChangeClock_short, Board_keyChangeHandler_short, KEY_DEBOUNCE_TIMEOUT_SHORT, 0, false, 0);
+    Util_constructClock(&keyChangeClock_long, Board_keyChangeHandler_long, KEY_DEBOUNCE_TIMEOUT_LONG, 0, false, 0);
+    Util_constructClock(&keyChangeClock_verylong, Board_keyChangeHandler_verylong, KEY_DEBOUNCE_TIMEOUT_VERYLONG, 0, false, 0);
 
     // Set the application callback
     appKeyChangeHandler = appKeyCB;
 }
-
-//my_test
 void Board_initLeds(void)
 {
     ledPinHandle = PIN_open(&ledPinState, ledPinTable);
@@ -207,13 +210,14 @@ void Board_setLed1_my(uint8_t iVal)
 {
     PIN_setOutputValue(ledPinHandle, Board_PIN_LED1, iVal);
 }
-void Board_setCS(uint8_t iVal)
+//void Board_setCS(uint8_t iVal)
+//{
+//    PIN_setOutputValue(ledPinHandle, Board_DIO21, iVal);
+//}
+void Board_setVibro(uint8_t iVal)   //Вывод инверсный. Инвертирование здесь!
 {
-    PIN_setOutputValue(ledPinHandle, Board_DIO21, iVal);
-}
-void Board_setRES(uint8_t iVal)
-{
-    PIN_setOutputValue(ledPinHandle, Board_SPI_MASTER_READY, iVal);
+    uint8_t nval = iVal ^ 1;
+    PIN_setOutputValue(ledPinHandle, Board_SPI_MASTER_READY, nval);
 }
 
 void Board_Power_down(void)
@@ -227,7 +231,6 @@ void Board_Power_down(void)
     /* Should never get here, since shutdown will reset. */
     while (1);
 }
-
 
 uint8_t Board_getLed_my(void)
 {
@@ -250,55 +253,9 @@ void Task_sleepMS(uint32_t period)
  */
 static void Board_keyCallback(PIN_Handle hPin, PIN_Id pinId)
 {
-    keysPressed = 0;
-#if defined(CC26X2R1_LAUNCHXL) || defined(CC13X2R1_LAUNCHXL) || defined(CC13X2P1_LAUNCHXL)
-    if ( PIN_getInputValue(Board_PIN_BUTTON0) == 0 )
-    {
-        keysPressed |= KEY_LEFT;
-    }
-
-    if ( PIN_getInputValue(Board_PIN_BUTTON1) == 0 )
-    {
-        keysPressed |= KEY_RIGHT;
-    }
-#elif defined(CC2650_LAUNCHXL) || defined(CC2640R2_LAUNCHXL) || defined(CC1350_LAUNCHXL)
-    if ( PIN_getInputValue(Board_BTN1) == 0 )
-    {
-        keysPressed |= KEY_LEFT;
-    }
-
-    if ( PIN_getInputValue(Board_BTN2) == 0 )
-    {
-        keysPressed |= KEY_RIGHT;
-    }
-#elif defined(CC2650DK_7ID)  || defined(CC1350DK_7XD)
-    if ( PIN_getInputValue(Board_KEY_SELECT) == 0 )
-    {
-        keysPressed |= KEY_SELECT;
-    }
-
-    if ( PIN_getInputValue(Board_KEY_UP) == 0 )
-    {
-        keysPressed |= KEY_UP;
-    }
-
-    if ( PIN_getInputValue(Board_KEY_DOWN) == 0 )
-    {
-        keysPressed |= KEY_DOWN;
-    }
-
-    if ( PIN_getInputValue(Board_KEY_LEFT) == 0 )
-    {
-        keysPressed |= KEY_LEFT;
-    }
-
-    if ( PIN_getInputValue(Board_KEY_RIGHT) == 0 )
-    {
-        keysPressed |= KEY_RIGHT;
-    }
-#endif
-
-    Util_startClock(&keyChangeClock);
+    Util_startClock(&keyChangeClock_short);
+    Util_startClock(&keyChangeClock_long);
+    Util_startClock(&keyChangeClock_verylong);
 }
 
 /*********************************************************************
@@ -310,12 +267,81 @@ static void Board_keyCallback(PIN_Handle hPin, PIN_Id pinId)
  *
  * @return  none
  */
-static void Board_keyChangeHandler(UArg a0)
+static void Board_keyChangeHandler_short(UArg a0)
 {
-    if (appKeyChangeHandler != NULL)
+    keysPressed = 0;
+    if (PIN_getInputValue(Board_BTN1) == 0 )
     {
-        // Notify the application
-        (*appKeyChangeHandler)(keysPressed);
+        keysPressed |= KEY_LEFT;
+    }
+
+    if (PIN_getInputValue(Board_BTN2) == 0 )
+    {
+        keysPressed |= KEY_RIGHT;
+    }
+
+    if(keysPressed != 0)
+    {
+        if (appKeyChangeHandler != NULL)
+        {
+            // Notify the application
+            (*appKeyChangeHandler)(keysPressed);
+        }
+    }
+    else
+    {
+        Util_stopClock(&keyChangeClock_long);
+        Util_stopClock(&keyChangeClock_verylong);
+    }
+}
+
+static void Board_keyChangeHandler_long(UArg a0)
+{
+    keysPressed = 0;
+    if (PIN_getInputValue(Board_BTN1) == 0 )
+    {
+        keysPressed |= KEY_LEFT_LONG;
+    }
+
+    if (PIN_getInputValue(Board_BTN2) == 0 )
+    {
+        keysPressed |= KEY_RIGHT_LONG;
+    }
+
+    if(keysPressed != 0)
+    {
+        if (appKeyChangeHandler != NULL)
+        {
+            // Notify the application
+            (*appKeyChangeHandler)(keysPressed);
+        }
+    }
+    else
+    {
+        Util_stopClock(&keyChangeClock_verylong);
+    }
+}
+
+static void Board_keyChangeHandler_verylong(UArg a0)
+{
+    keysPressed = 0;
+    if (PIN_getInputValue(Board_BTN1) == 0 )
+    {
+        keysPressed |= KEY_LEFT_VERYLONG;
+    }
+
+    if (PIN_getInputValue(Board_BTN2) == 0 )
+    {
+        keysPressed |= KEY_RIGHT_VERYLONG;
+    }
+
+    if(keysPressed != 0)
+    {
+        if (appKeyChangeHandler != NULL)
+        {
+            // Notify the application
+            (*appKeyChangeHandler)(keysPressed);
+        }
     }
 }
 /*********************************************************************

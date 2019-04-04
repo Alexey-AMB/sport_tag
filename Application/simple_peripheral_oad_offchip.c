@@ -58,7 +58,7 @@
 #include <ti/sysbios/knl/Queue.h>
 #include <ti/display/Display.h>
 #include <ti/drivers/GPIO.h>
-#include <ti/drivers/NVS.h>
+//#include <ti/drivers/NVS.h>
 #include <ti/drivers/ADC.h>
 
 #include <ti/sysbios/hal/Seconds.h>
@@ -73,7 +73,6 @@
 #include "icall_ble_api.h"
 
 #include "devinfoservice.h"
-#include "simple_gatt_profile.h"
 #include "myDataTransfer.h"
 #include "ll_common.h"
 
@@ -93,13 +92,13 @@
 #include "board.h"
 #include "board_key.h"
 
-//#include "two_btn_menu.h"
-//#include "simple_peripheral_oad_offchip_menu.h"
 #include "simple_peripheral_oad_offchip.h"
 
 #include "ble_user_config.h"
 
 #include "incommand.h"
+
+#include "myBlink.h"
 
 
 /*********************************************************************
@@ -136,7 +135,7 @@
 #define DEFAULT_CONN_PAUSE_PERIPHERAL         6
 
 // How often to perform periodic event (in msec)
-#define SBP_PERIODIC_EVT_PERIOD               1000
+#define SBP_PERIODIC_EVT_PERIOD               100
 
 
 #ifdef PLUS_OBSERVER
@@ -238,6 +237,7 @@
 #define LOW                                 0
 #define HIGH                                1
 
+
 /*********************************************************************
  * TYPEDEFS
  */
@@ -289,10 +289,10 @@ uint8_t sbpTaskStack[SBP_TASK_STACK_SIZE];
 
 
 // GAP - SCAN RSP data (max size = 31 bytes)
-static uint8_t scanRspData[] =
+static uint8_t scanRspData[31] =
 {
   // complete name
-  0x12,   // length of this data
+  0x16,   // length of this data
   GAP_ADTYPE_LOCAL_NAME_COMPLETE,
   'S',
   'B',
@@ -307,11 +307,13 @@ static uint8_t scanRspData[] =
   'P',
   ' ',
   'v',
-  ' ', // These 4 octets are placeholders for the SOFTVER field
+  ' ', // These  octets are placeholders for the SOFTVER field
   ' ', // which will be updated at init time
   ' ',
   ' ',
-
+  ' ',
+  ' ',
+  ' ',
   // connection interval range
   0x05,   // length of this data
   GAP_ADTYPE_SLAVE_CONN_INTERVAL_RANGE,
@@ -343,8 +345,8 @@ static uint8_t advertData[] =
   GAP_ADTYPE_16BIT_MORE,      // some of the UUID's, but not all
   LO_UINT16(OAD_SERVICE_UUID),
   HI_UINT16(OAD_SERVICE_UUID),
-  LO_UINT16(SIMPLEPROFILE_SERV_UUID),
-  HI_UINT16(SIMPLEPROFILE_SERV_UUID)
+  LO_UINT16(MYDATATRANSFER_SERV_UUID),
+  HI_UINT16(MYDATATRANSFER_SERV_UUID)
 };
 
 // GAP GATT Attributes
@@ -382,8 +384,7 @@ uint8 bdAddress[B_ADDR_LEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; //адрес БТ
 
 SPORT_TAG_SETTINGS cur_tag_settings;
 
-
-
+WORKMODE previonsMode = MODE_CONNECT;
 
 uint16_t iRecivedLen;
 uint16_t iSendedLen;
@@ -428,7 +429,7 @@ static uint8_t SimplePeripheral_enqueueMsg(uint8_t event, uint8_t state, uint8_t
 static void SimplePeripheral_connEvtCB(Gap_ConnEventRpt_t *pReport);
 static void SimplePeripheral_processOadWriteCB(uint8_t event, uint16_t arg);
 static void SimplePeripheral_keyChangeHandler(uint8_t keys);
-static void SimplePeripheral_handleKeys(uint8_t keys);
+//static void SimplePeripheral_handleKeys(uint8_t keys);
 static uint8_t SimplePeripheral_processL2CAPMsg(l2capSignalEvent_t *pMsg);
 static void SimplePeripheral_processPasscode(gapPasskeyNeededEvent_t *pData);
 static void SimplePeripheral_passcodeCB(uint8_t *deviceAddr,
@@ -441,11 +442,12 @@ static void TimeFunction(void);
 void  itoa(uint32_t value, char *string, int radix);
 void beep(uint16_t ms, uint8_t n);
 static void ReadStartParam(void);
+
 static void ApplyParam(void);
 static void CheckAkkumVoltage(void);
 
-static bool ReadEprom(void * buff, uint32_t lenbuff, uint32_t offset);
-static bool WriteEprom(void * buff, uint32_t lenbuff, uint32_t offset);
+static bool ReadEprom_inter_osal(void * buff, uint32_t lenbuff, uint32_t offset);
+static bool WriteEprom_inter_osal(void * buff, uint32_t lenbuff, uint32_t offset);
 static uint32_t GetADCmicrovolt(void);
 static uint32_t GetAkkumVoltage(void);
 static void WorkWithInputBuffer(uint8_t * buf, uint16_t lenbuf);
@@ -453,7 +455,10 @@ static void SendAsk(OutAsk ask, bool bHaveBuf);
 static bool ExecuteCommand(bool bHaveBuf);
 static uint8_t GetCRC8(uint8_t * buf, int len);
 
+static bool ChangeAdvertisingData(void);
 
+static void ChangeWorkMode(WORKMODE mode);
+void MyPowerDown(void);
 //================================================
 
 /*********************************************************************
@@ -570,7 +575,7 @@ bStatus_t SimplePeripheral_UnRegistertToAllConnectionEvent (connectionEventRegis
 //чтение параметров из ПЗУ
 static void ReadStartParam(void)
 {
-    if(ReadEprom((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 0))
+    if(ReadEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 0))
     {
         if(cur_tag_settings.signature == SIGNATURE_EPROM_SETTINGS)
         {
@@ -579,32 +584,37 @@ static void ReadStartParam(void)
         }
     }
 
-        Display_printf(dispHandle, 0, 0, "Settings read from EPROM - ERROR.");
+    Display_printf(dispHandle, 0, 0, "Settings read from EPROM - ERROR.");
 
 
-        cur_tag_settings.mode_tag = MODE_CONNECT;
-        cur_tag_settings.powerble_tag = 5;
-        memset((void*)cur_tag_settings.name_tag, 0, sizeof(cur_tag_settings.name_tag));
-        strcpy(cur_tag_settings.name_tag, "METKA 1");
-        memset((void*)cur_tag_settings.password_tag, 0, sizeof(cur_tag_settings.password_tag));
-        strcpy(cur_tag_settings.password_tag, "111111");
-        cur_tag_settings.timeut_conn = 300;
-        cur_tag_settings.timeut_run = 600;
-        cur_tag_settings.treshold_tag = -65;
-        cur_tag_settings.signature = SIGNATURE_EPROM_SETTINGS;
+    cur_tag_settings.mode_tag = MODE_CONNECT;
+    cur_tag_settings.powerble_tag = 5;
+    memset((void*)cur_tag_settings.name_tag, 0, sizeof(cur_tag_settings.name_tag));
+    strcpy(cur_tag_settings.name_tag, "METKA 1");
+    memset((void*)cur_tag_settings.password_tag, 0, sizeof(cur_tag_settings.password_tag));
+    strcpy(cur_tag_settings.password_tag, "111111");
+    cur_tag_settings.timeut_conn = 300;
+    cur_tag_settings.timeut_run = 600;
+    cur_tag_settings.treshold_tag = -65;
 
-        //crc = GetCRC8((void *)&cur_base_settings, sizeof(SPORT_BASE_SETTINGS));
 
-        Display_printf(dispHandle, 0, 0, "Create default settings.");
+    memset((void*)cur_tag_settings.fam, 0, sizeof(cur_tag_settings.fam));
+    cur_tag_settings.signature = SIGNATURE_EPROM_SETTINGS;
 
-        WriteEprom((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 0);
+    //crc = GetCRC8((void *)&cur_base_settings, sizeof(SPORT_BASE_SETTINGS));
+
+    Display_printf(dispHandle, 0, 0, "Create default settings.");
+
+    WriteEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 0);
 }
 
-//Применеие параметров станции
+//Применеие параметров метки
 static void ApplyParam(void)
 {
     //применить мощность передатчика BLE
     HCI_EXT_SetTxPowerCmd(cur_tag_settings.powerble_tag);   //значения от 0 до 12 см. ll.h
+
+    ChangeAdvertisingData();
 
     Task_sleepMS(10);
 }
@@ -612,78 +622,38 @@ static void ApplyParam(void)
 //проверка напряжения батареи перед работой
 static void CheckAkkumVoltage(void)
 {
-    if(GetAkkumVoltage() < 2700000)   // 2700000 - порог батареи 2.7V
+    if(GetAkkumVoltage() > 2700000)   // 2700000 - порог батареи 2.7V
     {
-        beep(50,5);
+        SendToBlink(PRF_AKK_FULL);
+        return;
     }
-    else
+    if(GetAkkumVoltage() > 2200000)
     {
-        beep(500,1);
+        SendToBlink(PRF_AKK_MEDIUM);
+        return;
     }
 
+    SendToBlink(PRF_AKK_LOW);
     return;
 }
-//чтение во внутреннее ПЗУ буфера.
-static bool ReadEprom(void * buff, uint32_t lenbuff, uint32_t offset)
+//чтение буфера из внутреннего ПЗУ .максимальное смещение 16 максимальный размер буфера 255
+static bool ReadEprom_inter_osal(void * buff, uint32_t lenbuff, uint32_t offset)
 {
-    NVS_Handle nvsHandle;
-    NVS_Attrs regionAttrs;
-    NVS_Params nvsParams;
-    int iRet = 0;
+    uint8_t iRet = 0;
 
-    NVS_init();
+    iRet = osal_snv_read(BLE_NVID_CUST_START + offset, lenbuff, buff);
 
-    NVS_Params_init(&nvsParams);
-    nvsHandle = NVS_open(Board_NVSINTERNAL, &nvsParams);
-
-    if (nvsHandle == NULL)
-    {
-        Display_printf(dispHandle, 0, 0, "NVS_open() failed.");
-        return (NULL);
-    }
-
-    NVS_getAttrs(nvsHandle, &regionAttrs);
-
-    /*
-     * Copy "lenbuff" bytes from the NVS region base address into
-     * buffer. An offset of "offset" specifies the offset from region base address.
-     * Therefore, the bytes are copied from regionAttrs.regionBase.
-     */
-    iRet = NVS_read(nvsHandle, offset, (void *) buff, lenbuff);
-    NVS_close(nvsHandle);
-
-    if(iRet == NVS_STATUS_SUCCESS) return true;
+    if(iRet == SUCCESS) return true;
     else return false;
 }
-//запись во внутреннее ПЗУ
-static bool WriteEprom(void * buff, uint32_t lenbuff, uint32_t offset)
+//запись буфера во внутреннее ПЗУ .максимальное смещение 16 максимальный размер буфера 255
+static bool WriteEprom_inter_osal(void * buff, uint32_t lenbuff, uint32_t offset)
 {
-    NVS_Handle nvsHandle;
-    NVS_Attrs regionAttrs;
-    NVS_Params nvsParams;
-    int iRet = 0;
+    uint8_t iRet = 0;
 
-    NVS_init();
+    iRet = osal_snv_write(BLE_NVID_CUST_START + offset, lenbuff, buff);
 
-    NVS_Params_init(&nvsParams);
-    nvsHandle = NVS_open(Board_NVSINTERNAL, &nvsParams);
-
-    if (nvsHandle == NULL)
-    {
-        Display_printf(dispHandle, 0, 0, "NVS_open() failed.");
-        return (NULL);
-    }
-
-    NVS_getAttrs(nvsHandle, &regionAttrs);
-
-    /* Write signature to memory. The flash sector is erased prior
-     * to performing the write operation. This is specified by
-     * NVS_WRITE_ERASE.
-     */
-    iRet =  NVS_write(nvsHandle, offset, (void *) buff, lenbuff, NVS_WRITE_ERASE | NVS_WRITE_POST_VERIFY);
-    NVS_close(nvsHandle);
-
-    if(iRet == NVS_STATUS_SUCCESS)
+    if(iRet == SUCCESS)
     {
         Display_printf(dispHandle, 0, 0, "Write to EPROM - OK.");
         return true;
@@ -759,166 +729,182 @@ stCommand * curCmd = NULL;
 //работа с принятым буфером
 static void WorkWithInputBuffer(uint8_t * buf, uint16_t lenbuf)
 {
-
-
     if((iRecivedLen == 0)&&(iExpectedLen == 0))
-    {//не принят еще не один блок
-        curCmd = (stCommand*)buf;
-        if(curCmd->signature == SIGNATURE_COMMAND)
-        {
-            iExpectedLen = curCmd->lenbuf;
-            iCurrCmd = curCmd->cmd;
-            iExpectedCrc = curCmd->crc;
-            if(iExpectedLen == 0)
-            {
-                ExecuteCommand(false);
-                return;
-            }
-            else
-            {
-                pBuffIn = malloc(iExpectedLen);
-                if(!pBuffIn)
-                {//сообщить об ошибке
-                    SendAsk(ASK_MALLOC_ERROR, false);
-                    iExpectedLen = 0;
-                    iCurrCmd = 0;
-                    iExpectedCrc = 0;
-                    return;
-                }
-                iBuffInLen = iExpectedLen;
-                if(iExpectedLen <= (lenbuf - sizeof(stCommand)))
-                {
-                    memcpy(pBuffIn, buf + sizeof(stCommand), iExpectedLen);
-                    if(GetCRC8(pBuffIn, iExpectedLen) == iExpectedCrc)
-                    {
-                        ExecuteCommand(true);
-                        return;
-                    }
-                    else
-                    { //сообщить об ошибке
-                        SendAsk(ASK_ERROR_CRC, false);
-                        iExpectedLen = 0;
-                        iCurrCmd = 0;
-                        iExpectedCrc = 0;
-                        return;
-                    }
-                }
-                else
-                {//если данные не влезли в один буфер
-                    memcpy(pBuffIn, buf + sizeof(stCommand), lenbuf - sizeof(stCommand));
-                    iRecivedLen = lenbuf - sizeof(stCommand);
-                    SendAsk(ASK_NEXT, false);
-                    return;
-                }
-            }
-        }
-        else
-        { //не сошлась сигнатура
-            SendAsk(ASK_ERROR, false);
-            iExpectedLen = 0;
-            iCurrCmd = 0;
-            iExpectedCrc = 0;
-            return;
-        }
-    }
+       {//не принят еще не один блок
+           curCmd = (stCommand*)buf;
+           if(curCmd->signature == SIGNATURE_COMMAND)
+           {
+               iExpectedLen = curCmd->lenbuf;
+               iCurrCmd = curCmd->cmd;
+               iExpectedCrc = curCmd->crc;
+               if(iExpectedLen == 0)
+               {
+                   ExecuteCommand(false);
+                   return;
+               }
+               else
+               {
+                   pBuffIn = malloc(iExpectedLen);
+                   if(!pBuffIn)
+                   {//сообщить об ошибке
+                       SendAsk(ASK_MALLOC_ERROR, false);
+                       iExpectedLen = 0;
+                       iCurrCmd = 0;
+                       iExpectedCrc = 0;
+                       return;
+                   }
+                   iBuffInLen = iExpectedLen;
+                   if(iExpectedLen <= (lenbuf - sizeof(stCommand)))
+                   {
+                       memcpy(pBuffIn, buf + sizeof(stCommand), iExpectedLen);
+                       if(GetCRC8(pBuffIn, iExpectedLen) == iExpectedCrc)
+                       {
+                           ExecuteCommand(true);
+                           return;
+                       }
+                       else
+                       { //сообщить об ошибке
+                           SendAsk(ASK_ERROR_CRC, false);
+                           iExpectedLen = 0;
+                           iCurrCmd = 0;
+                           iExpectedCrc = 0;
+                           return;
+                       }
+                   }
+                   else
+                   {//если данные не влезли в один буфер
+                       memcpy(pBuffIn, buf + sizeof(stCommand), lenbuf - sizeof(stCommand));
+                       iRecivedLen = lenbuf - sizeof(stCommand);
+                       SendAsk(ASK_NEXT, false);
+                       return;
+                   }
+               }
+           }
+           else
+           { //не сошлась сигнатура
+               SendAsk(ASK_ERROR, false);
+               iExpectedLen = 0;
+               iCurrCmd = 0;
+               iExpectedCrc = 0;
+               return;
+           }
+       }
 
-    if(iExpectedLen > iRecivedLen)
-    {
-        if(iExpectedLen - iRecivedLen > lenbuf)
-        {
-            memcpy(pBuffIn + iRecivedLen, buf, lenbuf);
-            iRecivedLen += lenbuf;
-            SendAsk(ASK_NEXT, false);
-            return;
-        }
-        else
-        {
-            memcpy(pBuffIn + iRecivedLen, buf, iExpectedLen - iRecivedLen);
-            if(GetCRC8(pBuffIn, iExpectedLen) == iExpectedCrc)
-            {
-                ExecuteCommand(true);
-                return;
-            }
-        }
-    }
+       if(iExpectedLen > iRecivedLen)
+       {
+           if(iExpectedLen - iRecivedLen > lenbuf)
+           {
+               memcpy(pBuffIn + iRecivedLen, buf, lenbuf);
+               iRecivedLen += lenbuf;
+               SendAsk(ASK_NEXT, false);
+               return;
+           }
+           else
+           {
+               memcpy(pBuffIn + iRecivedLen, buf, iExpectedLen - iRecivedLen);
+               if(GetCRC8(pBuffIn, iExpectedLen) == iExpectedCrc)
+               {
+                   ExecuteCommand(true);
+                   return;
+               }
+               else
+               { //сообщить об ошибке
+                   SendAsk(ASK_ERROR_CRC, false);
+                   iExpectedLen = 0;
+                   iCurrCmd = 0;
+                   iExpectedCrc = 0;
+                   return;
+               }
+           }
+       }
+       else
+       {   //странная ситуация, но такое было
+           iRecivedLen = 0;
+           iExpectedLen = 0;
+           iSendedLen = 0;
+           if(pBuffIn != NULL) free(pBuffIn);
+           pBuffIn = NULL;
+       }
 }
 
 //отправить сообщение на ПК
 static void SendAsk(OutAsk ask, bool bHaveBuf)
 {
     stCommand cmdOut;
-    uint8_t * buf = NULL;
-    uint8_t   len = 0;
+        uint8_t * buf = NULL;
+        uint8_t   len = 0;
 
-    if(iSendedLen == 0)
-    {
-        cmdOut.cmd = ask;
-        cmdOut.signature = SIGNATURE_COMMAND;
-        cmdOut.lenbuf = 0;
-        cmdOut.crc = 0;
-        if((bHaveBuf)&&(pBuffOut))
+        if(iSendedLen == 0)
         {
-            cmdOut.lenbuf = iBuffOutLen;
-            cmdOut.crc = GetCRC8(pBuffOut, iBuffOutLen);
-        }
+            cmdOut.cmd = ask;
+            cmdOut.signature = SIGNATURE_COMMAND;
+            cmdOut.lenbuf = 0;
+            cmdOut.crc = 0;
+            if((bHaveBuf)&&(pBuffOut))
+            {
+                cmdOut.lenbuf = iBuffOutLen;
+                cmdOut.crc = GetCRC8(pBuffOut, iBuffOutLen);
+            }
 
-        if((cmdOut.lenbuf + sizeof(stCommand)) > MYDATATRANSFER_MYBUFIN1_LEN)
-        {   // все не влезет в один буфер
-            len = MYDATATRANSFER_MYBUFIN1_LEN;
-            iSendedLen = len;
+            if((cmdOut.lenbuf + sizeof(stCommand)) > MYDATATRANSFER_MYBUFIN1_LEN)
+            {   // все не влезет в один буфер
+                len = MYDATATRANSFER_MYBUFIN1_LEN;
+                iSendedLen = len - sizeof(stCommand);
+            }
+            else
+            {   // влезет в один буфер
+                len = cmdOut.lenbuf + sizeof(stCommand);
+                iSendedLen = 0;
+            }
+
+            buf = ICall_malloc(len);
+            if(!buf)
+            {
+                Display_print0(dispHandle, 0, 0, "SendAsk: malloc error ");
+                return;
+            }
+            memset(buf, 0, len);
+            memcpy(buf, &cmdOut, sizeof(stCommand));
+            if((bHaveBuf)&&(pBuffOut)) memcpy(buf + sizeof(stCommand), pBuffOut, len - sizeof(stCommand));
+            MyDataTransfer_SetParameter(MYDATATRANSFER_MYBUFIN1_ID, len, buf);
+            ICall_free(buf);
+            if((iSendedLen == 0)&&(bHaveBuf)) //передача закончена
+            {
+                free(pBuffOut);
+                pBuffOut = NULL;
+            }
         }
         else
-        {   // влезет в один буфер
-            len = cmdOut.lenbuf + sizeof(stCommand);
-            iSendedLen = 0;
-        }
+        {
+            if((iBuffOutLen - iSendedLen) > MYDATATRANSFER_MYBUFIN1_LEN)
+            {   // все не влезет в один буфер
+                len = MYDATATRANSFER_MYBUFIN1_LEN;
+                //iSendedLen += len;
+            }
+            else
+            {   // влезет в один буфер
+                len = iBuffOutLen - iSendedLen;
+                //iSendedLen = 0;
+            }
 
-        buf = ICall_malloc(len);
-        if(!buf)
-        {
-            Display_print0(dispHandle, 0, 0, "SendAsk: malloc error ");
-            return;
-        }
-        memset(buf, 0, len);
-        memcpy(buf, &cmdOut, sizeof(stCommand));
-        if((bHaveBuf)&&(pBuffOut)) memcpy(buf + sizeof(stCommand), pBuffOut, len - sizeof(stCommand));
-        MyDataTransfer_SetParameter(MYDATATRANSFER_MYBUFIN1_ID, len, buf);
-        ICall_free(buf);
-        if((iSendedLen == 0)&&(bHaveBuf)) //передача закончена
-        {
-            free(pBuffOut);
-            pBuffOut = NULL;
-        }
-    }
-    else
-    {
-        if((iBuffOutLen - iSendedLen) > MYDATATRANSFER_MYBUFIN1_LEN)
-        {   // все не влезет в один буфер
-            len = MYDATATRANSFER_MYBUFIN1_LEN;
+            buf = ICall_malloc(len);
+            if(!buf)
+            {
+                Display_print0(dispHandle, 0, 0, "SendAsk: malloc error ");
+                return;
+            }
+            memset(buf, 0, len);
+            if((bHaveBuf)&&(pBuffOut)) memcpy(buf, pBuffOut + iSendedLen, len);
+            MyDataTransfer_SetParameter(MYDATATRANSFER_MYBUFIN1_ID, len, buf);
+            ICall_free(buf);
             iSendedLen += len;
+            if(iSendedLen  == iBuffOutLen) //передача закончена
+            {
+                if(pBuffOut != NULL) free(pBuffOut);
+                pBuffOut = NULL;
+                iSendedLen = 0;
+            }
         }
-        else
-        {   // влезет в один буфер
-            len = iBuffOutLen - iSendedLen;
-            iSendedLen = 0;
-        }
-
-        buf = ICall_malloc(len);
-        if(!buf)
-        {
-            Display_print0(dispHandle, 0, 0, "SendAsk: malloc error ");
-            return;
-        }
-        memset(buf, 0, len);
-        if((bHaveBuf)&&(pBuffOut)) memcpy(buf, pBuffOut + iSendedLen, len);
-        MyDataTransfer_SetParameter(MYDATATRANSFER_MYBUFIN1_ID, len, buf);
-        ICall_free(buf);
-        if(iSendedLen == 0) //передача закончена
-        {
-            free(pBuffOut);
-            pBuffOut = NULL;
-        }
-    }
 }
 
 //выполнить присланную команду
@@ -935,7 +921,7 @@ static bool ExecuteCommand(bool bHaveBuf)
         break;
 
     case CMD_SET_BLINK:
-        beep(500, 2);
+        SendToBlink(PRF_SIMPLEBLINK);    //beep(500, 2);
         SendAsk(ASK_OK, false);
         bRet = true;
         break;
@@ -1134,6 +1120,7 @@ static void SimplePeripheral_init(void)
   ADC_init();
   Board_initKeys(SimplePeripheral_keyChangeHandler);
   Board_initLeds();
+  InitBlink();
   
   #ifdef PLUS_OBSERVER
   //Board_initKeys(SimpleBLEPeripheralObserver_keyChangeHandler);
@@ -1333,8 +1320,7 @@ static void SimplePeripheral_init(void)
   versionStr[OAD_SW_VER_LEN] = NULL;
 
   // Display Image version
-  Display_print1(dispHandle, 0, 0, "SBP Off-chip OAD v%s",
-                 versionStr);
+  Display_print1(dispHandle, 0, 0, "SBP Off-chip OAD v%s", versionStr);
 
 //#ifdef LED_DEBUG
 //  // Open the LED debug pins
@@ -1394,8 +1380,7 @@ static void SimplePeripheral_init(void)
   }
 #endif // ( defined(GAP_BOND_MGR) && !defined(GATT_NO_SERVICE_CHANGED) )
 
-  //!!!!!test
-   Util_startClock(&periodicClock);
+  Util_startClock(&periodicClock);
 }
 
 /*********************************************************************
@@ -1414,12 +1399,11 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
 
 
     //++++++++++++++++++++++++++++
-
     ReadStartParam();
     Board_setLed0_my(0);
     Board_setLed1_my(0);
+    Board_setVibro(0);
     CheckAkkumVoltage();
-
     TimeFunction();
 
     ApplyParam();
@@ -1428,7 +1412,7 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
     //HCI_ReadBDADDRCmd();  //делаем запрос на получение UID (мак BT) ответ получаем в HCI_READ_BDADDR
 
 
-
+    //Display_printf(dispHandle, 0, 1, "Goto main loop");
     //Display_printf(dispHandle, 6, 0, "evenCM = %x \n", (char *)eventCM);
 
 
@@ -1571,18 +1555,32 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
  */
 static void SimplePeripheral_performPeriodicTask(void)
 {
-//  uint8_t valueToCopy;
+    PerformBlink();
+
+//    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock.
+//    {
+//        if(cur_tag_settings.mode_tag == MODE_RUN)
+//        {
+//            uint8 status;
 //
-//  // Call to retrieve the value of the third characteristic in the profile
-//  if (SimpleProfile_GetParameter(SIMPLEPROFILE_CHAR3, &valueToCopy) == SUCCESS)
-//  {
-//    // Call to set that value of the fourth characteristic in the profile.
-//    // Note that if notifications of the fourth characteristic have been
-//    // enabled by a GATT client device, then a notification will be sent
-//    // every time this function is called.
-//    SimpleProfile_SetParameter(SIMPLEPROFILE_CHAR4, sizeof(uint8_t),
-//                               &valueToCopy);
-//  }
+//            //Start scanning if not already scanning
+//
+//            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+//                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+//                                            DEFAULT_DISCOVERY_WHITE_LIST);
+//
+//            if(status == SUCCESS)
+//            {
+//                scanningStarted = TRUE;
+//                Display_print0(dispHandle, 4, 0, "Scanning On");
+//            }
+//            else
+//            {
+//                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
+//            }
+//        }
+//    }
+
 }
 
 /*********************************************************************
@@ -1786,7 +1784,6 @@ static uint8_t SimplePeripheral_processGATTMsg(gattMsgEvent_t *pMsg)
   return (TRUE);
 }
 
-
 /*********************************************************************
  * @fn      SimplePeripheral_processConnEvt
  *
@@ -1946,27 +1943,26 @@ static void SimplePeripheral_processAppMsg(sbpEvt_t *pMsg)
 
     case SBP_PASSCODE_NEEDED_EVT:
     {
-      SimplePeripheral_processPasscode((gapPasskeyNeededEvent_t*)pMsg->pData);
-      break;
+        SimplePeripheral_processPasscode((gapPasskeyNeededEvent_t*)pMsg->pData);
+        break;
     }
 
-	case SBP_CONN_EVT:
+    case SBP_CONN_EVT:
     {
         SimplePeripheral_processConnEvt((Gap_ConnEventRpt_t *)(pMsg->pData));
         break;
-	  }
+    }
 
 #ifdef PLUS_OBSERVER
-//    case SBP_KEY_CHANGE_EVT:
-//      SimpleBLEPeripheralObserver_handleKeys(pMsg->hdr.state);
-//      break;
+    //    case SBP_KEY_CHANGE_EVT:
+    //      SimpleBLEPeripheralObserver_handleKeys(pMsg->hdr.state);
+    //      break;
 
     case SBP_OBSERVER_STATE_EVT:
-      SimplePeripheral_processStackMsg((ICall_Hdr *)pMsg->pData);
-      break;
+        SimplePeripheral_processStackMsg((ICall_Hdr *)pMsg->pData);
+        break;
 #endif
-	  
-	  
+
     default:
       // Do nothing.
       break;
@@ -2008,6 +2004,8 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
         systemId[5] = ownAddress[3];
 
         DevInfo_SetParameter(DEVINFO_SYSTEM_ID, DEVINFO_SYSTEM_ID_LEN, systemId);
+
+        //bdAddress
 
         // Display device address
         Display_print1(dispHandle, SBP_ROW_DEV_ADDR, 0, "BD Addr: %s", Util_convertBdAddr2Str(ownAddress));
@@ -2057,6 +2055,15 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
         }
 #endif // ( defined(GAP_BOND_MGR) && !defined(GATT_NO_SERVICE_CHANGED) )
 
+
+        iRecivedLen = 0;
+        iExpectedLen = 0;
+        iSendedLen = 0;
+        if(pBuffIn != NULL) free(pBuffIn);
+        pBuffIn = NULL;
+        if(pBuffOut != NULL) free (pBuffOut);
+        pBuffOut = NULL;
+
       }
       break;
 
@@ -2065,7 +2072,16 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
       break;
 
     case GAPROLE_WAITING:
-      Util_stopClock(&periodicClock);
+      //Util_stopClock(&periodicClock);
+
+        iRecivedLen = 0;
+        iExpectedLen = 0;
+        iSendedLen = 0;
+        if(pBuffIn != NULL) free(pBuffIn);
+        pBuffIn = NULL;
+        if(pBuffOut != NULL) free (pBuffOut);
+        pBuffOut = NULL;
+
       SimplePeripheral_freeAttRsp(bleNotConnected);
 
       Display_print0(dispHandle, SBP_ROW_CONN_STATUS, 0, "Disconnected");
@@ -2097,8 +2113,6 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
       break;
   }
 }
-
-
 
 #ifdef PLUS_OBSERVER
 /*********************************************************************
@@ -2207,49 +2221,81 @@ static void SimpleBLEPeripheralObserver_handleKeys(uint8_t keys)
 {
   if (keys & KEY_RIGHT)
   {
-    uint8 status;
+//    uint8 status;
 
-    if(scanningStarted == TRUE)
-    {
-      status = GAPRole_CancelDiscovery();
-
-      if(status == SUCCESS)
-      {
-        scanningStarted = FALSE;
-        Display_print0(dispHandle, 4, 0, "Scanning Off");
-      }
-      else
-      {
-        Display_print0(dispHandle, 4, 0, "Scanning Off Fail");
-      }
-    }
+//    if(scanningStarted == TRUE)
+//    {
+//      status = GAPRole_CancelDiscovery();
+//
+//      if(status == SUCCESS)
+//      {
+//        scanningStarted = FALSE;
+//        Display_print0(dispHandle, 4, 0, "Scanning Off");
+//      }
+//      else
+//      {
+//        Display_print0(dispHandle, 4, 0, "Scanning Off Fail");
+//      }
+//    }
 
     return;
   }
 
   if (keys & KEY_LEFT)
   {
-    uint8 status;
+      //uint8 status;
 
-    //Start scanning if not already scanning
-    if((scanningStarted == FALSE))
-    {
-      status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
-                                    DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                                    DEFAULT_DISCOVERY_WHITE_LIST);
-
-      if(status == SUCCESS)
+      if(cur_tag_settings.mode_tag == MODE_SLEEP)
       {
-        scanningStarted = TRUE;
-        Display_print0(dispHandle, 4, 0, "Scanning On");
+          uint8_t adv_enabled;
+          adv_enabled = TRUE;
+          GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
+          Util_startClock(&periodicClock);
+          ChangeWorkMode(previonsMode);
       }
-      else
-      {
-        Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
-      }
-    }
 
-    return;
+      //Start scanning if not already scanning
+//      if (scanningStarted == FALSE)
+//      {
+//          status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+//                                          DEFAULT_DISCOVERY_ACTIVE_SCAN,
+//                                          DEFAULT_DISCOVERY_WHITE_LIST);
+//
+//          if(status == SUCCESS)
+//          {
+//              scanningStarted = TRUE;
+//              Display_print0(dispHandle, 4, 0, "Scanning On");
+//          }
+//          else
+//          {
+//              Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
+//          }
+//      }
+
+      return;
+  }
+
+  if (keys & KEY_LEFT_LONG)
+  {
+      //Display_print0(dispHandle, 4, 0, "Button left long");
+
+      if(cur_tag_settings.mode_tag == MODE_CONNECT)
+      {
+          ChangeWorkMode(MODE_RUN);
+          return;
+      }
+      if(cur_tag_settings.mode_tag == MODE_RUN)
+      {
+          ChangeWorkMode(MODE_CONNECT);
+          return;
+      }
+  }
+
+  if (keys & KEY_LEFT_VERYLONG)
+  {
+      //Display_print0(dispHandle, 4, 0, "Button left very long");
+      ChangeWorkMode(MODE_SLEEP);
+      return;
   }
 }
 
@@ -2319,8 +2365,6 @@ static void SimpleBLEPeripheralObserver_StateChangeCB(gapPeriObsRoleEvent_t *pEv
   ICall_freeMsg(pEvent);
 }
 #endif
-
-
 
 /*********************************************************************
  * @fn      SimplePeripheral_processCharValueChangeEvt
@@ -2398,25 +2442,25 @@ static void SimplePeripheral_processPasscode(gapPasskeyNeededEvent_t *pData)
 *
 * @return  none
 */
-static void SimplePeripheral_handleKeys(uint8_t keys)
-{
-  if (keys & KEY_LEFT)
-  {
-    // Check if the key is still pressed
-    if (PIN_getInputValue(Board_BUTTON0) == 0)
-    {
-      //tbm_buttonLeft();
-    }
-  }
-  else if (keys & KEY_RIGHT)
-  {
-    // Check if the key is still pressed
-    if (PIN_getInputValue(Board_BUTTON1) == 0)
-    {
-      //tbm_buttonRight();
-    }
-  }
-}
+//static void SimplePeripheral_handleKeys(uint8_t keys)
+//{
+//  if (keys & KEY_LEFT)
+//  {
+//    // Check if the key is still pressed
+//    if (PIN_getInputValue(Board_BUTTON0) == 0)
+//    {
+//      //tbm_buttonLeft();
+//    }
+//  }
+//  else if (keys & KEY_RIGHT)
+//  {
+//    // Check if the key is still pressed
+//    if (PIN_getInputValue(Board_BUTTON1) == 0)
+//    {
+//      //tbm_buttonRight();
+//    }
+//  }
+//}
 
 /*********************************************************************
  * Callback Functions - These run in the calling thread's context
@@ -2611,6 +2655,7 @@ static void TimeFunction(void)
 //      Вы можете найти HCI_EXT_SetTxPowerCmd в hci.h. Вы должны использовать эту функцию в SimpleBLEPeripheral_init ().
 }
 
+
 void beep(uint16_t ms, uint8_t n)
 {
     uint8_t i;
@@ -2631,6 +2676,121 @@ void beep(uint16_t ms, uint8_t n)
             Task_sleepMS(ms);
         }
     }
+}
+
+
+static bool ChangeAdvertisingData(void)
+{
+    char* buf = NULL;
+    uint8_t lenbuf = 20;
+    bStatus_t status = 0;
+
+    buf = malloc(lenbuf);
+    if(buf == NULL) return false;
+    memset(buf, 0, lenbuf);
+
+    if(strlen(cur_tag_settings.fam) == 0)
+    {
+        strcpy(buf, cur_tag_settings.name_tag);
+    }
+    else
+    {
+        strcpy(buf, cur_tag_settings.fam);
+    }
+
+    memcpy(scanRspData + 2, buf, lenbuf);
+
+    free(buf);
+
+
+    status = GAPRole_SetParameter(GAPROLE_SCAN_RSP_DATA, sizeof(scanRspData), scanRspData);
+
+    if(status == SUCCESS)
+    {
+        //Board_setLed0_my(Board_getLed_my()^1);
+        return true;
+    }
+    return false;
+}
+
+static void ChangeWorkMode(WORKMODE mode)
+{
+    uint8 status;
+
+    switch(mode)
+    {
+    case MODE_CONNECT:
+        Display_print0(dispHandle, 8, 0, "MODE_CONNECT");
+        previonsMode = cur_tag_settings.mode_tag;
+        cur_tag_settings.mode_tag = MODE_CONNECT;
+        if(scanningStarted == TRUE) status = GAPRole_CancelDiscovery();
+        if(status == SUCCESS)
+        {
+            Display_print0(dispHandle, 4, 0, "CancelDiscovery");
+        }
+
+        break;
+
+    case MODE_RUN:
+        Display_print0(dispHandle, 8, 0, "MODE_RUN");
+        previonsMode = cur_tag_settings.mode_tag;
+        cur_tag_settings.mode_tag = MODE_RUN;
+        //Start scanning if not already scanning
+        if (scanningStarted == FALSE)
+        {
+            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+                                            DEFAULT_DISCOVERY_WHITE_LIST);
+
+            if(status == SUCCESS)
+            {
+                scanningStarted = TRUE;
+                Display_print0(dispHandle, 4, 0, "Scanning On");
+            }
+            else
+            {
+                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
+            }
+        }
+        break;
+
+    case MODE_SLEEP:
+        Display_print0(dispHandle, 8, 0, "MODE_SLEEP");
+
+        MyPowerDown();
+
+        cur_tag_settings.mode_tag = MODE_SLEEP;
+        break;
+
+    default:
+        break;
+    }
+
+}
+
+//POWER_DOWN
+void MyPowerDown(void)
+{
+    uint8_t adv_enabled;
+
+    //Останавливаем таймер
+    Util_stopClock(&periodicClock);
+
+    Board_setLed0_my(0);
+    Board_setLed1_my(0);
+    Board_setVibro(0);
+
+    // Отключаем соединение
+    GAPRole_TerminateConnection();
+
+    // Остановить рекламу
+    adv_enabled = FALSE;
+    GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
+    Display_printf(dispHandle, 0, 0, "Stop task BLE.");
+
+    //        Display_printf(dispHandle, 0, 0, "Shutdown.");
+    //        Board_shutDownExtFlash();
+    //        Board_Power_down();
 }
 
 

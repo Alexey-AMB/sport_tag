@@ -6,3 +6,9 @@
 *.bin
 *.map
 *.opt
+*.mk
+*.bin
+*.map
+*.launch
+*.hex
+FlashROM/makefile
