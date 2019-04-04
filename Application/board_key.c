@@ -214,7 +214,7 @@ void Board_setLed1_my(uint8_t iVal)
 //{
 //    PIN_setOutputValue(ledPinHandle, Board_DIO21, iVal);
 //}
-void Board_setVibro(uint8_t iVal)   //Вывод инверсный. Инвертирование здесь!
+void Board_setVibro(uint8_t iVal)
 {
     uint8_t nval = iVal ^ 1;
     PIN_setOutputValue(ledPinHandle, Board_SPI_MASTER_READY, nval);
