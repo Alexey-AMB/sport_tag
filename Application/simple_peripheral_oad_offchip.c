@@ -384,8 +384,6 @@ uint8 bdAddress[B_ADDR_LEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; //адрес БТ
 
 SPORT_TAG_SETTINGS cur_tag_settings;
 
-uint8_t blink_counter = 0;
-
 WORKMODE previonsMode = MODE_CONNECT;
 
 uint16_t iRecivedLen;
@@ -624,15 +622,18 @@ static void ApplyParam(void)
 //проверка напряжения батареи перед работой
 static void CheckAkkumVoltage(void)
 {
-    if(GetAkkumVoltage() < 2700000)   // 2700000 - порог батареи 2.7V
+    if(GetAkkumVoltage() > 2700000)   // 2700000 - порог батареи 2.7V
     {
-        beep(50,5);
+        SendToBlink(PRF_AKK_FULL);
+        return;
     }
-    else
+    if(GetAkkumVoltage() > 2200000)
     {
-        beep(500,1);
+        SendToBlink(PRF_AKK_MEDIUM);
+        return;
     }
 
+    SendToBlink(PRF_AKK_LOW);
     return;
 }
 //чтение буфера из внутреннего ПЗУ .максимальное смещение 16 максимальный размер буфера 255
@@ -834,7 +835,7 @@ static void SendAsk(OutAsk ask, bool bHaveBuf)
         if((cmdOut.lenbuf + sizeof(stCommand)) > MYDATATRANSFER_MYBUFIN1_LEN)
         {   // все не влезет в один буфер
             len = MYDATATRANSFER_MYBUFIN1_LEN;
-            iSendedLen = len;
+            iSendedLen = len - sizeof(stCommand);
         }
         else
         {   // влезет в один буфер
@@ -904,7 +905,7 @@ static bool ExecuteCommand(bool bHaveBuf)
         break;
 
     case CMD_SET_BLINK:
-        beep(500, 2);
+        SendToBlink(PRF_SIMPLEBLINK);    //beep(500, 2);
         SendAsk(ASK_OK, false);
         bRet = true;
         break;
@@ -1103,6 +1104,7 @@ static void SimplePeripheral_init(void)
   ADC_init();
   Board_initKeys(SimplePeripheral_keyChangeHandler);
   Board_initLeds();
+  //InitBlink();
   
   #ifdef PLUS_OBSERVER
   //Board_initKeys(SimpleBLEPeripheralObserver_keyChangeHandler);
@@ -1381,14 +1383,14 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
 
 
     //++++++++++++++++++++++++++++
-    ReadStartParam();
-    Board_setLed0_my(0);
-    Board_setLed1_my(0);
-    Board_setVibro(0);
-    CheckAkkumVoltage();
-    TimeFunction();
-
-    ApplyParam();
+//    ReadStartParam();
+//    Board_setLed0_my(0);
+//    Board_setLed1_my(0);
+//    Board_setVibro(0);
+//    CheckAkkumVoltage();
+//    TimeFunction();
+//
+//    ApplyParam();
     //================================
 
     //HCI_ReadBDADDRCmd();  //делаем запрос на получение UID (мак BT) ответ получаем в HCI_READ_BDADDR
@@ -1537,33 +1539,31 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
  */
 static void SimplePeripheral_performPeriodicTask(void)
 {
-    blink_counter++;
+    //PerformBlink();
 
-    PerformBlink(blink_counter);
-
-    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock. Даже если запускать через AppMsg.
-    {
-        if(cur_tag_settings.mode_tag == MODE_RUN)
-        {
-            uint8 status;
-
-            //Start scanning if not already scanning
-
-            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
-                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                                            DEFAULT_DISCOVERY_WHITE_LIST);
-
-            if(status == SUCCESS)
-            {
-                scanningStarted = TRUE;
-                Display_print0(dispHandle, 4, 0, "Scanning On");
-            }
-            else
-            {
-                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
-            }
-        }
-    }
+//    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock.
+//    {
+//        if(cur_tag_settings.mode_tag == MODE_RUN)
+//        {
+//            uint8 status;
+//
+//            //Start scanning if not already scanning
+//
+//            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+//                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+//                                            DEFAULT_DISCOVERY_WHITE_LIST);
+//
+//            if(status == SUCCESS)
+//            {
+//                scanningStarted = TRUE;
+//                Display_print0(dispHandle, 4, 0, "Scanning On");
+//            }
+//            else
+//            {
+//                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
+//            }
+//        }
+//    }
 
 }
 
@@ -1767,7 +1767,6 @@ static uint8_t SimplePeripheral_processGATTMsg(gattMsgEvent_t *pMsg)
   // It's safe to free the incoming message
   return (TRUE);
 }
-
 
 /*********************************************************************
  * @fn      SimplePeripheral_processConnEvt
@@ -2081,8 +2080,6 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
   }
 }
 
-
-
 #ifdef PLUS_OBSERVER
 /*********************************************************************
  * @fn      Util_convertBytes2Str
@@ -2334,8 +2331,6 @@ static void SimpleBLEPeripheralObserver_StateChangeCB(gapPeriObsRoleEvent_t *pEv
   ICall_freeMsg(pEvent);
 }
 #endif
-
-
 
 /*********************************************************************
  * @fn      SimplePeripheral_processCharValueChangeEvt
@@ -2673,7 +2668,7 @@ static bool ChangeAdvertisingData(void)
 
     free(buf);
 
-    //данные времени передаются в ASCII! При получении надо обратно в uint32!
+
     status = GAPRole_SetParameter(GAPROLE_SCAN_RSP_DATA, sizeof(scanRspData), scanRspData);
 
     if(status == SUCCESS)
