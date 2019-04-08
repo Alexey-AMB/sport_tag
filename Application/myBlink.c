@@ -73,7 +73,7 @@ uint8_t run_md[4][2] =  {   {5, 1},    //green
 uint8_t conn_md[4][2] =  {  {50, 1},    //green
                             {52, 0},
                             {102, 1},
-                            {152, 0}
+                            {104, 0}
                         };
 uint8_t on_pw[4][2] =  {    {5, 1},    //vibro
                             {10, 0},
@@ -150,7 +150,7 @@ void SendToBlink(BlinkProfiles pr)
         ignoreR = false;
         break;
     case PRF_START_STATION:
-        redBP.bContinue = true;
+        redBP.bContinue = false;
         redBP.dim = start_st;
         redBP.len = 6;
 
@@ -281,4 +281,52 @@ void PerformBlink(void)
         cntR++;
         Board_setLed0_my(outR);
     }
+
+    if (!ignoreG)
+        {
+            valG = *(*(greenBP.dim + iG));
+            if (cntG < valG)
+            {
+                outG = *(*(greenBP.dim + iG) + 1);
+            }
+            else
+            {
+                if (cntG == maxG)
+                {
+                    if (greenBP.bContinue)
+                    {
+                        cntG = 0;
+                        iG = 0;
+                    }
+                    else ignoreG = true;
+                }
+                else iG++;
+            }
+            cntG++;
+            Board_setLed1_my(outG);
+        }
+
+    if (!ignoreV)
+        {
+            valV = *(*(vibroBP.dim + iV));
+            if (cntV < valV)
+            {
+                outV = *(*(vibroBP.dim + iV) + 1);
+            }
+            else
+            {
+                if (cntV == maxV)
+                {
+                    if (vibroBP.bContinue)
+                    {
+                        cntV = 0;
+                        iV = 0;
+                    }
+                    else ignoreV = true;
+                }
+                else iV++;
+            }
+            cntV++;
+           // Board_setVibro(outR);
+        }
 }

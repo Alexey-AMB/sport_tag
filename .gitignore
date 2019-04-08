@@ -12,3 +12,6 @@
 *.launch
 *.hex
 FlashROM/makefile
+*.map
+*.bin
+*.hex

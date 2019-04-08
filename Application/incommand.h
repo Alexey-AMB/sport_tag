@@ -8,8 +8,11 @@ typedef enum InCommand
     CMD_SET_TIME,           //установи время часов
     CMD_GET_AKKVOLTAGE,     //пришли напряжение на аккумуляторе
     CMD_SET_BLINK,          //помигай лампочками
-    CMD_WRITE_FOTO,         //запиши данные фото
-    CMD_READ_FOTO,          //считай данные фото
+    //CMD_WRITE_DATA,         //запиши данные
+    CMD_READ_DATA,          //считай данные
+    CMD_SET_MODE_RUN,
+    CMD_SET_MODE_CONN,
+    CMD_SET_MODE_SLEEP,
     CMD_NEXT
 }InCommand;
 
@@ -72,3 +75,12 @@ typedef struct SPORT_TAG_SETTINGS   //len=42
     uint8_t     signature;      //сигнатура SIGNATURE_EPROM_SETTINGS
 }SPORT_TAG_SETTINGS;
 #pragma pack(pop)
+
+// Зарезервированный номер стартовой станции
+#define START_STATION_NUM         240
+// Зарезервированный номер финишной станции
+#define FINISH_STATION_NUM        245
+// Зарезервированный номер станции проверки
+#define CHECK_STATION_NUM         248
+// Зарезервированный номер станции очистки
+#define CLEAR_STATION_NUM         249

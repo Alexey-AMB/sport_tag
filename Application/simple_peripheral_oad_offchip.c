@@ -236,7 +236,7 @@
 
 #define LOW                                 0
 #define HIGH                                1
-
+#define LEN_AR_BASE_TABLE                   256
 
 /*********************************************************************
  * TYPEDEFS
@@ -350,7 +350,7 @@ static uint8_t advertData[] =
 };
 
 // GAP GATT Attributes
-static uint8_t attDeviceName[GAP_DEVICE_NAME_LEN] = "SBP OAD off-chip";
+static uint8_t attDeviceName[GAP_DEVICE_NAME_LEN] = "SPORT_TAG";
 
 // Globals used for ATT Response retransmission
 static gattMsgEvent_t *pAttRsp = NULL;
@@ -398,6 +398,11 @@ uint16_t  iBuffCmLen = 0;
 uint8_t  iExpectedCrc;
 uint8_t  iCurrCmd;
 
+uint8_t NumLastBase = 0;
+uint32_t TimeLastBase = 0;
+
+uint8_t arBaseTable[LEN_AR_BASE_TABLE];
+uint8_t currPosBaseTable = 0;
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -456,6 +461,11 @@ static bool ExecuteCommand(bool bHaveBuf);
 static uint8_t GetCRC8(uint8_t * buf, int len);
 
 static bool ChangeAdvertisingData(void);
+
+static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len);
+static void AddBaseToList(uint8_t numBase, uint32_t timeBase);
+static void SaveBaseTable(void);
+static bool MoveEpromBlock(uint8_t strtBlk);
 
 static void ChangeWorkMode(WORKMODE mode);
 void MyPowerDown(void);
@@ -912,6 +922,7 @@ static void SendAsk(OutAsk ask, bool bHaveBuf)
 static bool ExecuteCommand(bool bHaveBuf)
 {
     bool bRet = false;
+    uint8_t numBlock = 1;
 
     switch (iCurrCmd)
     {
@@ -921,7 +932,25 @@ static bool ExecuteCommand(bool bHaveBuf)
         break;
 
     case CMD_SET_BLINK:
-        SendToBlink(PRF_SIMPLEBLINK);    //beep(500, 2);
+        SendToBlink(PRF_SIMPLEBLINK);
+        SendAsk(ASK_OK, false);
+        bRet = true;
+        break;
+
+    case CMD_SET_MODE_RUN:
+        ChangeWorkMode(MODE_RUN);
+        SendAsk(ASK_OK, false);
+        bRet = true;
+        break;
+
+    case CMD_SET_MODE_CONN:
+        ChangeWorkMode(MODE_CONNECT);
+        SendAsk(ASK_OK, false);
+        bRet = true;
+        break;
+
+    case CMD_SET_MODE_SLEEP:
+        ChangeWorkMode(MODE_SLEEP);
         SendAsk(ASK_OK, false);
         bRet = true;
         break;
@@ -981,61 +1010,30 @@ static bool ExecuteCommand(bool bHaveBuf)
         break;
     }
 
-//    case CMD_WRITE_CARD:
-//        pBuffCm = pBuffIn;
-//        pBuffIn = NULL;
-//        { //отправить запрос на запись контактной метки
-//            stRecUe *pMsg = malloc(sizeof(stRecUe));
-//            if (pMsg)
-//            {
-//                pMsg->command = COMMAND_WRITE_CARD;
-//                pMsg->len = iBuffCmLen;
-//                pMsg->buff = pBuffCm;
-//                Queue_put(queueCM, &(pMsg->elem));
-//                Event_post(eventCM, NEW_COMMAND_FOR_CM_EVT);
-//                free(pMsg);
-//            }
-//        }
-//        bRet = true;
-//        break;
-//
-//    case CMD_READ_CARD:
-//        pBuffOut = malloc(LEN_DATA_FROM_CARD);
-//        if (!pBuffOut)
-//        {
-//            SendAsk(ASK_MALLOC_ERROR, false);
-//            bRet = false;
-//            break;
-//        }
-//        iBuffOutLen = LEN_DATA_FROM_CARD;
-//        memset(pBuffOut, 0, LEN_DATA_FROM_CARD);
-////        { //остановить задачу контактных меток
-////            stRecUe *pMsg = malloc(sizeof(stRecUe));
-////            if (pMsg)
-////            {
-////                pMsg->command = COMMAND_STOP_TASK;
-////                pMsg->len = 0;
-////                pMsg->buff = NULL;
-////                Queue_put(queueCM, &(pMsg->elem));
-////                Event_post(eventCM, NEW_COMMAND_FOR_CM_EVT);
-////                free(pMsg);
-////            }
-////        }
-////        Task_sleepMS(10);
-//        { //отправить запрос на чтение контактной метки
-//            stRecUe *pMsg = malloc(sizeof(stRecUe));
-//            if (pMsg)
-//            {
-//                pMsg->command = COMMAND_READ_CARD;
-//                pMsg->len = iBuffOutLen;
-//                pMsg->buff = pBuffOut;
-//                Queue_put(queueCM, &(pMsg->elem));
-//                Event_post(eventCM, NEW_COMMAND_FOR_CM_EVT);
-//                free(pMsg);
-//            }
-//        }
-//        bRet = true;
-//        break;
+    case CMD_READ_DATA:
+        pBuffOut = malloc(LEN_AR_BASE_TABLE);
+        if (!pBuffOut)
+        {
+            SendAsk(ASK_MALLOC_ERROR, false);
+            bRet = false;
+            break;
+        }
+        iBuffOutLen = LEN_AR_BASE_TABLE;
+        memset(pBuffOut, 0, LEN_AR_BASE_TABLE);
+
+        numBlock = *pBuffIn;
+        if(numBlock < 15)
+        {
+            ReadEprom_inter_osal(pBuffOut, LEN_AR_BASE_TABLE, numBlock);
+            SendAsk(ASK_OK, true);
+            bRet = true;
+        }
+        else
+        {
+            SendAsk(ASK_ERROR, false);
+            bRet = false;
+        }
+        break;
 
     default:
         SendAsk(ASK_ERROR, false);
@@ -1199,7 +1197,7 @@ static void SimplePeripheral_init(void)
   }
 
   // Set the GAP Characteristics
-  GGS_SetParameter(GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName);
+  //GGS_SetParameter(GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName);
 
   // Set advertising interval
   {
@@ -1557,29 +1555,29 @@ static void SimplePeripheral_performPeriodicTask(void)
 {
     PerformBlink();
 
-//    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock.
-//    {
-//        if(cur_tag_settings.mode_tag == MODE_RUN)
-//        {
-//            uint8 status;
-//
-//            //Start scanning if not already scanning
-//
-//            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
-//                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
-//                                            DEFAULT_DISCOVERY_WHITE_LIST);
-//
-//            if(status == SUCCESS)
-//            {
-//                scanningStarted = TRUE;
-//                Display_print0(dispHandle, 4, 0, "Scanning On");
-//            }
-//            else
-//            {
-//                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
-//            }
-//        }
-//    }
+    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock.
+    {
+        if(cur_tag_settings.mode_tag == MODE_RUN)
+        {
+            uint8 status;
+
+            //Start scanning if not already scanning
+
+            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+                                            DEFAULT_DISCOVERY_WHITE_LIST);
+
+            if(status == SUCCESS)
+            {
+                scanningStarted = TRUE;
+                Display_print0(dispHandle, 4, 0, "Scanning On");
+            }
+            else
+            {
+                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
+            }
+        }
+    }
 
 }
 
@@ -2154,56 +2152,47 @@ char *Util_convertBytes2Str(uint8_t *pData, uint8_t length)
  */
 static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *pEvent)
 {
-  switch (pEvent->gap.opcode)
-  {
+    switch (pEvent->gap.opcode)
+    {
     case GAP_DEVICE_INFO_EVENT:
 
+        if(pEvent->deviceInfo.rssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога
+        {
+            //memcpy(&CurrBaseBdAddr, pEvent->deviceInfo.addr, 6);
+            //Print scan response data otherwise advertising data
+            if(pEvent->deviceInfo.eventType == GAP_ADRPT_SCAN_RSP)
+            {
+                //Display_print1(dispHandle, 4, 0, "Scan Response Addr: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr));
+                //Display_print1(dispHandle, 5, 0, "Scan Response Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
+            }
+            else
+            {
+                //Display_print2(dispHandle, 6, 0, "Advertising Addr: %s Advertising Type: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr), AdvTypeStrings[pEvent->deviceInfo.eventType]);
+                //Display_print1(dispHandle, 7, 0, "Advertising Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
+                WorkWithDiscoBase(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen);
+            }
+        }
 
-
-        //if(pEvent->deviceInfo.rssi > RSSI_THRESHOLD)
-
-
-//        if (memcmp(pMyAddr, devList[i].addr, B_ADDR_LEN) == 0)
-//                        {
-//                            Board_setLed_my(1);
-//                            Task_sleep(75);
-//                            Board_setLed_my(0);
-//                        }
-
-
-
-      //Print scan response data otherwise advertising data
-      if(pEvent->deviceInfo.eventType == GAP_ADRPT_SCAN_RSP)
-      {
-        Display_print1(dispHandle, 4, 0, "Scan Response Addr: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr));
-        Display_print1(dispHandle, 5, 0, "Scan Response Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
-      }
-      else
-      {
-        Display_print2(dispHandle, 6, 0, "Advertising Addr: %s Advertising Type: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr), AdvTypeStrings[pEvent->deviceInfo.eventType]);
-        Display_print1(dispHandle, 7, 0, "Advertising Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
-      }
-
-      ICall_free(pEvent->deviceInfo.pEvtData);
-      ICall_free(pEvent);
-      break;
+        ICall_free(pEvent->deviceInfo.pEvtData);
+        ICall_free(pEvent);
+        break;
 
     case GAP_DEVICE_DISCOVERY_EVENT:
-      // discovery complete
-      scanningStarted = FALSE;
+        // discovery complete
+        scanningStarted = FALSE;
 
-      //Display_print0(dispHandle, 7, 0, "GAP_DEVICE_DISC_EVENT");
-      Display_print1(dispHandle, 5, 0, "Devices discovered: %d", pEvent->discCmpl.numDevs);
-      Display_print0(dispHandle, 4, 0, "Scanning Off");
+        //Display_print0(dispHandle, 7, 0, "GAP_DEVICE_DISC_EVENT");
+        //Display_print1(dispHandle, 5, 0, "Devices discovered: %d", pEvent->discCmpl.numDevs);
+        //Display_print0(dispHandle, 4, 0, "Scanning Off");
 
-      ICall_free(pEvent->discCmpl.pDevList);
-      ICall_free(pEvent);
+        ICall_free(pEvent->discCmpl.pDevList);
+        ICall_free(pEvent);
 
-      break;
+        break;
 
     default:
-      break;
-  }
+        break;
+    }
 }
 
 /*********************************************************************
@@ -2700,10 +2689,15 @@ static bool ChangeAdvertisingData(void)
 
     memcpy(scanRspData + 2, buf, lenbuf);
 
+    memset(attDeviceName, 0, GAP_DEVICE_NAME_LEN);
+    memcpy(attDeviceName, buf, lenbuf);
+
     free(buf);
 
 
     status = GAPRole_SetParameter(GAPROLE_SCAN_RSP_DATA, sizeof(scanRspData), scanRspData);
+
+    GGS_SetParameter(GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName);
 
     if(status == SUCCESS)
     {
@@ -2728,7 +2722,7 @@ static void ChangeWorkMode(WORKMODE mode)
         {
             Display_print0(dispHandle, 4, 0, "CancelDiscovery");
         }
-
+        SendToBlink(PRF_MODE_CONNECT);
         break;
 
     case MODE_RUN:
@@ -2752,6 +2746,7 @@ static void ChangeWorkMode(WORKMODE mode)
                 Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
             }
         }
+        SendToBlink(PRF_MODE_RUN);
         break;
 
     case MODE_SLEEP:
@@ -2766,6 +2761,139 @@ static void ChangeWorkMode(WORKMODE mode)
         break;
     }
 
+    SendToBlink(PRF_CHANGE_MODE);
+}
+
+//извлекаем из принятой рекламы номер станции и время на станции
+// логика работы в номерами станций
+static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
+{
+    uint8_t tmp[5] = {'B', 'A', 'S', 'E', '_' };
+    uint8_t i = 0;
+    uint8_t numCurrBase = 0;
+    uint32_t timeCurrBase = 0;
+
+    if(len < 11) return;
+
+    for(i=0; i < (len - 5); i++)
+    {
+        if(memcmp(pBuf + i, &tmp, 5) == 0)
+        {
+            numCurrBase = *(pBuf + i + 5);
+            memcpy((void *)&timeCurrBase, (void *)(pBuf + i + 7), sizeof(uint32_t));
+            break;
+        }
+    }
+
+    switch(numCurrBase)
+    {
+    case 0:
+        break;
+
+    case START_STATION_NUM:     //стартовую базу фиксируем при ВЫХОДЕ из зоны приема, запись происходит при обнаружении следующей базы
+        NumLastBase = numCurrBase;
+        TimeLastBase = timeCurrBase;
+        SendToBlink(PRF_START_STATION);
+        break;
+
+    case FINISH_STATION_NUM:
+        if(NumLastBase == START_STATION_NUM) AddBaseToList(NumLastBase, TimeLastBase);
+        if(NumLastBase != 0)    //если были базы до этой
+        {
+            AddBaseToList(numCurrBase, timeCurrBase);
+            if(currPosBaseTable > 3)
+            {
+                SaveBaseTable();
+                ChangeWorkMode(MODE_CONNECT);
+            }
+        }
+        SendToBlink(PRF_FINISH_STATION);
+        break;
+
+    case CHECK_STATION_NUM:
+        NumLastBase = 0;
+        TimeLastBase = 0;
+        SendToBlink(PRF_NORMAL_STATION);
+        break;
+
+    case CLEAR_STATION_NUM:
+        memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
+        currPosBaseTable = 0;
+        SendToBlink(PRF_NORMAL_STATION);
+        break;
+
+    default:
+        if(numCurrBase != NumLastBase)
+        {
+            if(NumLastBase == START_STATION_NUM) AddBaseToList(NumLastBase, TimeLastBase);
+
+            NumLastBase = numCurrBase;
+            TimeLastBase = timeCurrBase;
+            AddBaseToList(numCurrBase, timeCurrBase);
+            SendToBlink(PRF_NORMAL_STATION);
+        }
+        break;
+    }
+
+}
+
+//записываем номер и время базы в таблицу ОЗУ
+static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
+{
+    uint8_t pageData[4];
+
+    pageData[0] = numBase;
+    pageData[1] = (timeBase & 0x00FF0000)>>16;   //!!! надо проверять!!!
+    pageData[2] = (timeBase & 0x0000FF00)>>8;
+    pageData[3] = (timeBase & 0x000000FF);
+
+    if(currPosBaseTable == LEN_AR_BASE_TABLE)
+    {
+        SaveBaseTable();        //дошли до конца блока
+        memset(&arBaseTable, 0, LEN_AR_BASE_TABLE);
+        currPosBaseTable = 0;
+    }
+
+    if (currPosBaseTable == 0)          //Начало блока - время старта 4 байта. Далее по 4 байта: номер станции и три байта времени.
+    {
+        memcpy(&arBaseTable, (void *)&timeBase, sizeof(timeBase));
+        currPosBaseTable += sizeof(timeBase);
+    }
+
+    memcpy(&arBaseTable, &pageData, sizeof(pageData));
+    currPosBaseTable += sizeof(pageData);
+}
+
+//Первый блок EPROM для настроек. Начиная со второго для результатов.
+//Начало блока - время старта 4 байта. Далее по 4 байта: номер станции и три байта времени.
+//Сначала пишем в озу, как блок готов или завершён забег сдвигаем блоки 2->3 и тд, переписываем в пзу.
+//При уходе в сон если начат блок надо сохранить.
+static void SaveBaseTable(void)
+{
+    MoveEpromBlock(1);
+    WriteEprom_inter_osal(arBaseTable, LEN_AR_BASE_TABLE, 1);
+}
+
+//сдвигаем блоки ПЗУ (256 байт) начиная с strtBlk вправо. Последние исчезают.
+static bool MoveEpromBlock(uint8_t strtBlk)
+{
+    uint8_t MAXBLOKSEPROM = 16;
+    uint8_t iNumCurrBlock = 0;
+
+    if(strtBlk > MAXBLOKSEPROM) return false;
+
+    uint8_t * tmpBuf = malloc(LEN_AR_BASE_TABLE);
+    if(tmpBuf) return false;
+
+    for(iNumCurrBlock = MAXBLOKSEPROM - 1; iNumCurrBlock > strtBlk; iNumCurrBlock -= 1)
+    {
+        //ReadEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock);
+        //WriteEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock + 1);
+        Display_printf(dispHandle, 0, 0, "Shift blok."); //test
+    }
+
+    free(tmpBuf);
+    return true;
 }
 
 //POWER_DOWN
@@ -2787,6 +2915,8 @@ void MyPowerDown(void)
     adv_enabled = FALSE;
     GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
     Display_printf(dispHandle, 0, 0, "Stop task BLE.");
+
+    if(currPosBaseTable != 0) SaveBaseTable();
 
     //        Display_printf(dispHandle, 0, 0, "Shutdown.");
     //        Board_shutDownExtFlash();
