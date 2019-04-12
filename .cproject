@@ -190,7 +190,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Startup/ccfg_app_ble_rcosc.c|PROFILES/peripheral.c|TOOLS/src|TOOLS/cc26xx_app_oad.cmd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="PROFILES/peripheral.c|Startup/ccfg_app_ble_rcosc.c|TOOLS/src|TOOLS/cc26xx_app_oad.cmd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

@@ -15,3 +15,7 @@ FlashROM/makefile
 *.map
 *.bin
 *.hex
+*.bin
+*.map
+*.bin
+*.hex

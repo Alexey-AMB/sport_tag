@@ -5,7 +5,7 @@
 typedef struct BLINK_PROFILE
 {
     bool bContinue;     //повторять циклически (1) или однократно (0)
-    uint8_t (*dim)[2];
+    uint8_t * dim;
     uint8_t len;        //количество строк в массиве
 }BLINK_PROFILE;
 
@@ -46,12 +46,16 @@ uint8_t start_st[6][2] ={   {2, 1},     //red
                             {10, 1},
                             {12, 0}
                         };
-uint8_t normal_st[6][2] ={  {30, 1},    //red
+uint8_t normal_st[10][2] ={ {30, 1},    //red
                             {35, 0},
                             {55, 1},
                             {60, 0},
                             {70, 1},
-                            {72, 0}
+                            {75, 0},
+                            {80, 1},
+                            {85, 0},
+                            {90, 1},
+                            {95, 0}
                         };
 uint8_t finish_st[6][2] ={  {30, 1},    //red
                             {35, 0},
@@ -65,10 +69,10 @@ uint8_t change_md[4][2] ={  {5, 1},    //vibro
                             {20, 1},
                             {30, 0}
                         };
-uint8_t run_md[4][2] =  {   {5, 1},    //green
-                            {10, 0},
-                            {15, 1},
-                            {20, 0}
+uint8_t run_md[4][2] =  {   {2, 1},    //green
+                            {4, 0},
+                            {6, 1},
+                            {8, 0}
                         };
 uint8_t conn_md[4][2] =  {  {50, 1},    //green
                             {52, 0},
@@ -111,122 +115,122 @@ void SendToBlink(BlinkProfiles pr)
     {
     case PRF_SIMPLEBLINK:
         redBP.bContinue = false;
-        redBP.dim = simpleblink;
+        redBP.dim = &simpleblink[0][0];
         redBP.len = 6;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_AKK_FULL:
         redBP.bContinue = false;
-        redBP.dim = akk_full;
+        redBP.dim = &akk_full[0][0];
         redBP.len = 6;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_AKK_MEDIUM:
         redBP.bContinue = false;
-        redBP.dim = akk_medium;
+        redBP.dim = &akk_medium[0][0];
         redBP.len = 6;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_AKK_LOW:
         redBP.bContinue = false;
-        redBP.dim = akk_low;
+        redBP.dim = &akk_low[0][0];
         redBP.len = 6;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_START_STATION:
         redBP.bContinue = false;
-        redBP.dim = start_st;
+        redBP.dim = &start_st[0][0];
         redBP.len = 6;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_NORMAL_STATION:
         redBP.bContinue = false;
-        redBP.dim = normal_st;
-        redBP.len = 6;
+        redBP.dim = &normal_st[0][0];
+        redBP.len = 10;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_FINISH_STATION:
         redBP.bContinue = false;
-        redBP.dim = finish_st;
+        redBP.dim = &finish_st[0][0];
         redBP.len = 6;
 
         iR = 0;
         cntR = 0;
-        maxR = *(*(redBP.dim + redBP.len - 1));
+        maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
         break;
     case PRF_CHANGE_MODE:
         vibroBP.bContinue = false;
-        vibroBP.dim = change_md;
+        vibroBP.dim = &change_md[0][0];
         vibroBP.len = 4;
 
         iV = 0;
         cntV = 0;
-        maxV = *(*(vibroBP.dim + vibroBP.len - 1));
+        maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
         ignoreV = false;
         break;
     case PRF_MODE_RUN:
         greenBP.bContinue = true;
-        greenBP.dim = run_md;
+        greenBP.dim = &run_md[0][0];
         greenBP.len = 4;
 
         iG = 0;
         cntG = 0;
-        maxG = *(*(greenBP.dim + greenBP.len - 1));
+        maxG = *(greenBP.dim + (greenBP.len - 1) * 2);
         ignoreG = false;
         break;
     case PRF_MODE_CONNECT:
         greenBP.bContinue = true;
-        greenBP.dim = conn_md;
+        greenBP.dim = &conn_md[0][0];
         greenBP.len = 4;
 
         iG = 0;
         cntG = 0;
-        maxG = *(*(greenBP.dim + greenBP.len - 1));
+        maxG = *(greenBP.dim + (greenBP.len - 1) * 2);
         ignoreG = false;
         break;
     case PRF_POWER_ON:
         vibroBP.bContinue = false;
-        vibroBP.dim = on_pw;
+        vibroBP.dim = &on_pw[0][0];
         vibroBP.len = 4;
 
         iV = 0;
         cntV = 0;
-        maxV = *(*(vibroBP.dim + vibroBP.len -1));
+        maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
         ignoreV = false;
         break;
     case PRF_POWER_OFF:
         vibroBP.bContinue = false;
-        vibroBP.dim = off_pw;
+        vibroBP.dim = &off_pw[0][0];
         vibroBP.len = 4;
 
         iV = 0;
         cntV = 0;
-        maxV = *(*(vibroBP.dim + vibroBP.len -1));
+        maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
         ignoreV = false;
         break;
     case PRF_RED_STOP:
@@ -260,14 +264,14 @@ void PerformBlink(void)
 {
     if (!ignoreR)
     {
-        valR = *(*(redBP.dim + iR));
-        if (cntR < valR)
+        valR = *(redBP.dim + iR * 2);
+        if (cntR <= valR)
         {
-            outR = *(*(redBP.dim + iR) + 1);
+            outR = *(redBP.dim + iR * 2 + 1);
         }
         else
         {
-            if (cntR == maxR)
+            if (cntR >= maxR)
             {
                 if (redBP.bContinue)
                 {
@@ -283,50 +287,50 @@ void PerformBlink(void)
     }
 
     if (!ignoreG)
+    {
+        valG = *(greenBP.dim + iG * 2);
+        if (cntG <= valG)
         {
-            valG = *(*(greenBP.dim + iG));
-            if (cntG < valG)
-            {
-                outG = *(*(greenBP.dim + iG) + 1);
-            }
-            else
-            {
-                if (cntG == maxG)
-                {
-                    if (greenBP.bContinue)
-                    {
-                        cntG = 0;
-                        iG = 0;
-                    }
-                    else ignoreG = true;
-                }
-                else iG++;
-            }
-            cntG++;
-            Board_setLed1_my(outG);
+            outG = *(greenBP.dim + iG * 2 + 1);
         }
+        else
+        {
+            if (cntG >= maxG)
+            {
+                if (greenBP.bContinue)
+                {
+                    cntG = 0;
+                    iG = 0;
+                }
+                else ignoreG = true;
+            }
+            else iG++;
+        }
+        cntG++;
+        Board_setLed1_my(outG);
+    }
 
     if (!ignoreV)
+    {
+        valV = *(vibroBP.dim + iV * 2);
+        if (cntV <= valV)
         {
-            valV = *(*(vibroBP.dim + iV));
-            if (cntV < valV)
-            {
-                outV = *(*(vibroBP.dim + iV) + 1);
-            }
-            else
-            {
-                if (cntV == maxV)
-                {
-                    if (vibroBP.bContinue)
-                    {
-                        cntV = 0;
-                        iV = 0;
-                    }
-                    else ignoreV = true;
-                }
-                else iV++;
-            }
-            cntV++;
-           // Board_setVibro(outR);
+            outV = *(vibroBP.dim + iV * 2 + 1);
         }
+        else
+        {
+            if (cntV >= maxV)
+            {
+                if (vibroBP.bContinue)
+                {
+                    cntV = 0;
+                    iV = 0;
+                }
+                else ignoreV = true;
+            }
+            else iV++;
+        }
+        cntV++;
+        // Board_setVibro(outR);
+    }
 }

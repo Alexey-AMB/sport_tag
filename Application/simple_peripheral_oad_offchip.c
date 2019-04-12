@@ -143,9 +143,9 @@
 #define DEFAULT_MAX_SCAN_RES                  15
 
 // Scan parameters
-#define DEFAULT_SCAN_DURATION                 4000
-#define DEFAULT_SCAN_WIND                     80
-#define DEFAULT_SCAN_INT                      80
+#define DEFAULT_SCAN_DURATION                 298   //4000
+#define DEFAULT_SCAN_WIND                     177   //80
+#define DEFAULT_SCAN_INT                      177   //(240 * 0.625) = 150 ms //80
 
 // Discovey mode (limited, general, all)
 #define DEFAULT_DISCOVERY_MODE                DEVDISC_MODE_ALL
@@ -171,7 +171,7 @@
 
 // Warning! To optimize RAM, task stack size must be a multiple of 8 bytes
 #ifndef SBP_TASK_STACK_SIZE
-  #define SBP_TASK_STACK_SIZE                   1000
+  #define SBP_TASK_STACK_SIZE                   800
 #endif
 
 // Row numbers
@@ -291,41 +291,41 @@ uint8_t sbpTaskStack[SBP_TASK_STACK_SIZE];
 // GAP - SCAN RSP data (max size = 31 bytes)
 static uint8_t scanRspData[31] =
 {
-  // complete name
-  0x16,   // length of this data
-  GAP_ADTYPE_LOCAL_NAME_COMPLETE,
-  'S',
-  'B',
-  'P',
-  ' ',
-  'O',
-  'A',
-  'D',
-  ' ',
-  'A',
-  'P',
-  'P',
-  ' ',
-  'v',
-  ' ', // These  octets are placeholders for the SOFTVER field
-  ' ', // which will be updated at init time
-  ' ',
-  ' ',
-  ' ',
-  ' ',
-  ' ',
-  // connection interval range
-  0x05,   // length of this data
-  GAP_ADTYPE_SLAVE_CONN_INTERVAL_RANGE,
-  LO_UINT16(DEFAULT_DESIRED_MIN_CONN_INTERVAL),   // 10ms
-  HI_UINT16(DEFAULT_DESIRED_MIN_CONN_INTERVAL),
-  LO_UINT16(DEFAULT_DESIRED_MAX_CONN_INTERVAL),   // 10ms
-  HI_UINT16(DEFAULT_DESIRED_MAX_CONN_INTERVAL),
+ // complete name
+   0x15,   // length of this data
+   GAP_ADTYPE_LOCAL_NAME_COMPLETE,
+   'S',
+   'B',
+   'P',
+   ' ',
+   'O',
+   'A',
+   'D',
+   ' ',
+   'A',
+   'P',
+   'P',
+   ' ',
+   'v',
+   ' ', // These 4 octets are placeholders for the SOFTVER field
+   ' ', // which will be updated at init time
+   ' ',
+   ' ',
+   ' ',
+   ' ',
+   ' ',
+   // connection interval range
+   0x05,   // length of this data
+   GAP_ADTYPE_SLAVE_CONN_INTERVAL_RANGE,
+   LO_UINT16(DEFAULT_DESIRED_MIN_CONN_INTERVAL),   // 10ms
+   HI_UINT16(DEFAULT_DESIRED_MIN_CONN_INTERVAL),
+   LO_UINT16(DEFAULT_DESIRED_MAX_CONN_INTERVAL),   // 10ms
+   HI_UINT16(DEFAULT_DESIRED_MAX_CONN_INTERVAL),
 
-  // Tx power level
-  0x02,   // length of this data
-  GAP_ADTYPE_POWER_LEVEL,
-  0       // 0dBm
+   // Tx power level
+   0x02,   // length of this data
+   GAP_ADTYPE_POWER_LEVEL,
+   0       // 0dBm
 };
 
 // GAP - Advertisement data (max size = 31 bytes, though this is
@@ -459,6 +459,7 @@ static void WorkWithInputBuffer(uint8_t * buf, uint16_t lenbuf);
 static void SendAsk(OutAsk ask, bool bHaveBuf);
 static bool ExecuteCommand(bool bHaveBuf);
 static uint8_t GetCRC8(uint8_t * buf, int len);
+static uint8_t min(uint8_t a, uint8_t b);
 
 static bool ChangeAdvertisingData(void);
 
@@ -625,6 +626,7 @@ static void ApplyParam(void)
     HCI_EXT_SetTxPowerCmd(cur_tag_settings.powerble_tag);   //значения от 0 до 12 см. ll.h
 
     ChangeAdvertisingData();
+    ChangeWorkMode(cur_tag_settings.mode_tag);
 
     Task_sleepMS(10);
 }
@@ -1197,7 +1199,7 @@ static void SimplePeripheral_init(void)
   }
 
   // Set the GAP Characteristics
-  //GGS_SetParameter(GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName);
+  GGS_SetParameter(GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName);
 
   // Set advertising interval
   {
@@ -1561,8 +1563,6 @@ static void SimplePeripheral_performPeriodicTask(void)
         {
             uint8 status;
 
-            //Start scanning if not already scanning
-
             status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
                                             DEFAULT_DISCOVERY_ACTIVE_SCAN,
                                             DEFAULT_DISCOVERY_WHITE_LIST);
@@ -1570,7 +1570,7 @@ static void SimplePeripheral_performPeriodicTask(void)
             if(status == SUCCESS)
             {
                 scanningStarted = TRUE;
-                Display_print0(dispHandle, 4, 0, "Scanning On");
+                //Display_print0(dispHandle, 4, 0, "Scanning On");
             }
             else
             {
@@ -1934,7 +1934,7 @@ static void SimplePeripheral_processAppMsg(sbpEvt_t *pMsg)
     {
       //SimplePeripheral_handleKeys(pMsg->hdr.state);
 
-      SimpleBLEPeripheralObserver_handleKeys(pMsg->hdr.state);  //!!!my
+      SimpleBLEPeripheralObserver_handleKeys(pMsg->hdr.state);
 
       break;
     }
@@ -2054,13 +2054,13 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
 #endif // ( defined(GAP_BOND_MGR) && !defined(GATT_NO_SERVICE_CHANGED) )
 
 
-        iRecivedLen = 0;
-        iExpectedLen = 0;
-        iSendedLen = 0;
-        if(pBuffIn != NULL) free(pBuffIn);
-        pBuffIn = NULL;
-        if(pBuffOut != NULL) free (pBuffOut);
-        pBuffOut = NULL;
+//        iRecivedLen = 0;
+//        iExpectedLen = 0;
+//        iSendedLen = 0;
+//        if(pBuffIn != NULL) free(pBuffIn);
+//        pBuffIn = NULL;
+//        if(pBuffOut != NULL) free (pBuffOut);
+//        pBuffOut = NULL;
 
       }
       break;
@@ -2072,13 +2072,13 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
     case GAPROLE_WAITING:
       //Util_stopClock(&periodicClock);
 
-        iRecivedLen = 0;
-        iExpectedLen = 0;
-        iSendedLen = 0;
-        if(pBuffIn != NULL) free(pBuffIn);
-        pBuffIn = NULL;
-        if(pBuffOut != NULL) free (pBuffOut);
-        pBuffOut = NULL;
+//        iRecivedLen = 0;
+//        iExpectedLen = 0;
+//        iSendedLen = 0;
+//        if(pBuffIn != NULL) free(pBuffIn);
+//        pBuffIn = NULL;
+//        if(pBuffOut != NULL) free (pBuffOut);
+//        pBuffOut = NULL;
 
       SimplePeripheral_freeAttRsp(bleNotConnected);
 
@@ -2112,7 +2112,7 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
   }
 }
 
-#ifdef PLUS_OBSERVER
+//#ifdef PLUS_OBSERVER
 /*********************************************************************
  * @fn      Util_convertBytes2Str
  *
@@ -2156,6 +2156,8 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
     {
     case GAP_DEVICE_INFO_EVENT:
 
+        cur_tag_settings.treshold_tag = -40;    //!!!test_only!!!
+
         if(pEvent->deviceInfo.rssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога
         {
             //memcpy(&CurrBaseBdAddr, pEvent->deviceInfo.addr, 6);
@@ -2167,14 +2169,16 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
             }
             else
             {
-                //Display_print2(dispHandle, 6, 0, "Advertising Addr: %s Advertising Type: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr), AdvTypeStrings[pEvent->deviceInfo.eventType]);
-                //Display_print1(dispHandle, 7, 0, "Advertising Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
+                Display_print2(dispHandle, 6, 0, "Advertising Addr: %s Advertising Type: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr), AdvTypeStrings[pEvent->deviceInfo.eventType]);
+                Display_print1(dispHandle, 7, 0, "Advertising Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
+
                 WorkWithDiscoBase(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen);
             }
         }
 
         ICall_free(pEvent->deviceInfo.pEvtData);
         ICall_free(pEvent);
+
         break;
 
     case GAP_DEVICE_DISCOVERY_EVENT:
@@ -2210,6 +2214,8 @@ static void SimpleBLEPeripheralObserver_handleKeys(uint8_t keys)
 {
   if (keys & KEY_RIGHT)
   {
+
+      SendToBlink(PRF_START_STATION);
 //    uint8 status;
 
 //    if(scanningStarted == TRUE)
@@ -2353,7 +2359,7 @@ static void SimpleBLEPeripheralObserver_StateChangeCB(gapPeriObsRoleEvent_t *pEv
   // Free the stack message
   ICall_freeMsg(pEvent);
 }
-#endif
+//#endif
 
 /*********************************************************************
  * @fn      SimplePeripheral_processCharValueChangeEvt
@@ -2667,6 +2673,11 @@ void beep(uint16_t ms, uint8_t n)
     }
 }
 
+static uint8_t min(uint8_t a, uint8_t b)
+{
+    if(a < b) return a;
+    return b;
+}
 
 static bool ChangeAdvertisingData(void)
 {
@@ -2676,20 +2687,20 @@ static bool ChangeAdvertisingData(void)
 
     buf = malloc(lenbuf);
     if(buf == NULL) return false;
-    memset(buf, 0, lenbuf);
+    memset(buf, ' ', lenbuf);
 
-    if(strlen(cur_tag_settings.fam) == 0)
+    if(strlen(cur_tag_settings.fam) == 0)   //в рекламе не должно быть завершающих нулей
     {
-        strcpy(buf, cur_tag_settings.name_tag);
+        memcpy(buf, cur_tag_settings.name_tag, min(strlen(cur_tag_settings.name_tag), lenbuf));
     }
     else
     {
-        strcpy(buf, cur_tag_settings.fam);
+        memcpy(buf, cur_tag_settings.fam, min(strlen(cur_tag_settings.fam), lenbuf));
     }
 
     memcpy(scanRspData + 2, buf, lenbuf);
 
-    memset(attDeviceName, 0, GAP_DEVICE_NAME_LEN);
+    memset(attDeviceName, 0, GAP_DEVICE_NAME_LEN);  //а здесь строка завершается 0
     memcpy(attDeviceName, buf, lenbuf);
 
     free(buf);
@@ -2710,31 +2721,39 @@ static bool ChangeAdvertisingData(void)
 static void ChangeWorkMode(WORKMODE mode)
 {
     uint8 status;
+    uint8_t adv_enabled;
 
     switch(mode)
     {
     case MODE_CONNECT:
         Display_print0(dispHandle, 8, 0, "MODE_CONNECT");
         previonsMode = cur_tag_settings.mode_tag;
-        cur_tag_settings.mode_tag = MODE_CONNECT;
         if(scanningStarted == TRUE) status = GAPRole_CancelDiscovery();
         if(status == SUCCESS)
         {
             Display_print0(dispHandle, 4, 0, "CancelDiscovery");
         }
+        cur_tag_settings.mode_tag = MODE_CONNECT;
+
+        adv_enabled = TRUE;
+        GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
+
         SendToBlink(PRF_MODE_CONNECT);
         break;
 
     case MODE_RUN:
         Display_print0(dispHandle, 8, 0, "MODE_RUN");
         previonsMode = cur_tag_settings.mode_tag;
+        // Отключаем соединение
+        GAPRole_TerminateConnection();
+        // Остановить рекламу
+        adv_enabled = FALSE;
+        GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
         cur_tag_settings.mode_tag = MODE_RUN;
         //Start scanning if not already scanning
         if (scanningStarted == FALSE)
         {
-            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
-                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                                            DEFAULT_DISCOVERY_WHITE_LIST);
+            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE, DEFAULT_DISCOVERY_ACTIVE_SCAN, DEFAULT_DISCOVERY_WHITE_LIST);
 
             if(status == SUCCESS)
             {
@@ -2785,11 +2804,10 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
         }
     }
 
-    switch(numCurrBase)
-    {
-    case 0:
-        break;
+    if(numCurrBase == 0) return;
 
+    switch (numCurrBase)
+    {
     case START_STATION_NUM:     //стартовую базу фиксируем при ВЫХОДЕ из зоны приема, запись происходит при обнаружении следующей базы
         NumLastBase = numCurrBase;
         TimeLastBase = timeCurrBase;
@@ -2814,12 +2832,16 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
         NumLastBase = 0;
         TimeLastBase = 0;
         SendToBlink(PRF_NORMAL_STATION);
+
+        //!!!test_only
+        //AddBaseToList(numCurrBase, timeCurrBase);
+        //!!!
         break;
 
     case CLEAR_STATION_NUM:
         memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
         currPosBaseTable = 0;
-        SendToBlink(PRF_NORMAL_STATION);
+        SendToBlink(PRF_SIMPLEBLINK);
         break;
 
     default:
@@ -2834,7 +2856,6 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
         }
         break;
     }
-
 }
 
 //записываем номер и время базы в таблицу ОЗУ
@@ -2843,24 +2864,26 @@ static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
     uint8_t pageData[4];
 
     pageData[0] = numBase;
-    pageData[1] = (timeBase & 0x00FF0000)>>16;   //!!! надо проверять!!!
+    pageData[1] = (timeBase & 0x00FF0000)>>16;  //порядок старших - младших???
     pageData[2] = (timeBase & 0x0000FF00)>>8;
     pageData[3] = (timeBase & 0x000000FF);
 
-    if(currPosBaseTable == LEN_AR_BASE_TABLE)
+    if(currPosBaseTable >= LEN_AR_BASE_TABLE - sizeof(pageData))
     {
+        //Display_printf(dispHandle, 0, 0, "Save table."); //test
         SaveBaseTable();        //дошли до конца блока
-        memset(&arBaseTable, 0, LEN_AR_BASE_TABLE);
+        memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
         currPosBaseTable = 0;
     }
 
     if (currPosBaseTable == 0)          //Начало блока - время старта 4 байта. Далее по 4 байта: номер станции и три байта времени.
     {
-        memcpy(&arBaseTable, (void *)&timeBase, sizeof(timeBase));
+        //Display_printf(dispHandle, 0, 0, "Init table."); //test
+        memcpy(arBaseTable, (void *)&timeBase, sizeof(timeBase));
         currPosBaseTable += sizeof(timeBase);
     }
 
-    memcpy(&arBaseTable, &pageData, sizeof(pageData));
+    memcpy(arBaseTable + currPosBaseTable, &pageData, sizeof(pageData));
     currPosBaseTable += sizeof(pageData);
 }
 
@@ -2871,24 +2894,24 @@ static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
 static void SaveBaseTable(void)
 {
     MoveEpromBlock(1);
-    WriteEprom_inter_osal(arBaseTable, LEN_AR_BASE_TABLE, 1);
+    //!!!WriteEprom_inter_osal(arBaseTable, LEN_AR_BASE_TABLE, 1);
 }
 
 //сдвигаем блоки ПЗУ (256 байт) начиная с strtBlk вправо. Последние исчезают.
 static bool MoveEpromBlock(uint8_t strtBlk)
 {
-    uint8_t MAXBLOKSEPROM = 16;
+    uint8_t MAXBLOKSEPROM = 15;
     uint8_t iNumCurrBlock = 0;
 
     if(strtBlk > MAXBLOKSEPROM) return false;
 
     uint8_t * tmpBuf = malloc(LEN_AR_BASE_TABLE);
-    if(tmpBuf) return false;
+    if(tmpBuf == NULL) return false;
 
-    for(iNumCurrBlock = MAXBLOKSEPROM - 1; iNumCurrBlock > strtBlk; iNumCurrBlock -= 1)
+    for(iNumCurrBlock = MAXBLOKSEPROM - 1; iNumCurrBlock >= strtBlk; iNumCurrBlock -= 1)
     {
-        //ReadEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock);
-        //WriteEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock + 1);
+        ReadEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock);
+        //!!!WriteEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock + 1);
         Display_printf(dispHandle, 0, 0, "Shift blok."); //test
     }
 
