@@ -139,6 +139,8 @@ int main()
 
   PIN_init(BoardGpioInitTable);
 
+  Power_init();
+
 #ifdef CACHE_AS_RAM
   // retain cache during standby
   Power_setConstraint(PowerCC26XX_SB_VIMS_CACHE_RETAIN);

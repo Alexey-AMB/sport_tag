@@ -63,6 +63,8 @@
 
 #include <ti/sysbios/hal/Seconds.h>
 
+#include "ExtFlash.h"
+
 #ifdef LED_DEBUG
 #include <ti/drivers/PIN.h>
 #endif //LED_DEBUG
@@ -404,6 +406,8 @@ uint32_t TimeLastBase = 0;
 uint8_t arBaseTable[LEN_AR_BASE_TABLE];
 uint8_t currPosBaseTable = 0;
 
+uint32_t timeShutdown = 0;
+
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -583,10 +587,10 @@ bStatus_t SimplePeripheral_UnRegistertToAllConnectionEvent (connectionEventRegis
 
 //my key hanlder ====================================
 
-//чтение параметров из ПЗУ
+//чтение параметров из ПЗУ из блока №1 в блоке №0 - sendSvcChngdOnNextBoot см. стр 1375
 static void ReadStartParam(void)
 {
-    if(ReadEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 0))
+    if(ReadEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 1))
     {
         if(cur_tag_settings.signature == SIGNATURE_EPROM_SETTINGS)
         {
@@ -604,9 +608,9 @@ static void ReadStartParam(void)
     strcpy(cur_tag_settings.name_tag, "METKA 1");
     memset((void*)cur_tag_settings.password_tag, 0, sizeof(cur_tag_settings.password_tag));
     strcpy(cur_tag_settings.password_tag, "111111");
-    cur_tag_settings.timeut_conn = 300;
-    cur_tag_settings.timeut_run = 600;
-    cur_tag_settings.treshold_tag = -65;
+    cur_tag_settings.timeut_conn = 600;
+    //cur_tag_settings.timeut_run = 600;
+    cur_tag_settings.treshold_tag = -40;
 
 
     memset((void*)cur_tag_settings.fam, 0, sizeof(cur_tag_settings.fam));
@@ -616,7 +620,7 @@ static void ReadStartParam(void)
 
     Display_printf(dispHandle, 0, 0, "Create default settings.");
 
-    WriteEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 0);
+    WriteEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 1);
 }
 
 //Применеие параметров метки
@@ -741,6 +745,8 @@ stCommand * curCmd = NULL;
 //работа с принятым буфером
 static void WorkWithInputBuffer(uint8_t * buf, uint16_t lenbuf)
 {
+    timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
+
     if((iRecivedLen == 0)&&(iExpectedLen == 0))
        {//не принят еще не один блок
            curCmd = (stCommand*)buf;
@@ -1407,6 +1413,7 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
     TimeFunction();
 
     ApplyParam();
+    timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
     //================================
 
     //HCI_ReadBDADDRCmd();  //делаем запрос на получение UID (мак BT) ответ получаем в HCI_READ_BDADDR
@@ -1579,6 +1586,7 @@ static void SimplePeripheral_performPeriodicTask(void)
         }
     }
 
+    if(Seconds_get() > timeShutdown) MyPowerDown();
 }
 
 /*********************************************************************
@@ -2023,7 +2031,8 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
 
         GAPRole_GetParameter(GAPROLE_CONNHANDLE, &connHandle);
 
-        Util_startClock(&periodicClock);
+        //Util_startClock(&periodicClock);
+        timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
 
         numActive = linkDB_NumActive();
 
@@ -2054,13 +2063,13 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
 #endif // ( defined(GAP_BOND_MGR) && !defined(GATT_NO_SERVICE_CHANGED) )
 
 
-//        iRecivedLen = 0;
-//        iExpectedLen = 0;
-//        iSendedLen = 0;
-//        if(pBuffIn != NULL) free(pBuffIn);
-//        pBuffIn = NULL;
-//        if(pBuffOut != NULL) free (pBuffOut);
-//        pBuffOut = NULL;
+        iRecivedLen = 0;
+        iExpectedLen = 0;
+        iSendedLen = 0;
+        if(pBuffIn != NULL) free(pBuffIn);
+        pBuffIn = NULL;
+        if(pBuffOut != NULL) free (pBuffOut);
+        pBuffOut = NULL;
 
       }
       break;
@@ -2072,13 +2081,15 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
     case GAPROLE_WAITING:
       //Util_stopClock(&periodicClock);
 
-//        iRecivedLen = 0;
-//        iExpectedLen = 0;
-//        iSendedLen = 0;
-//        if(pBuffIn != NULL) free(pBuffIn);
-//        pBuffIn = NULL;
-//        if(pBuffOut != NULL) free (pBuffOut);
-//        pBuffOut = NULL;
+        iRecivedLen = 0;
+        iExpectedLen = 0;
+        iSendedLen = 0;
+        if(pBuffIn != NULL) free(pBuffIn);
+        pBuffIn = NULL;
+        if(pBuffOut != NULL) free (pBuffOut);
+        pBuffOut = NULL;
+
+        timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
 
       SimplePeripheral_freeAttRsp(bleNotConnected);
 
@@ -2156,8 +2167,6 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
     {
     case GAP_DEVICE_INFO_EVENT:
 
-        cur_tag_settings.treshold_tag = -40;    //!!!test_only!!!
-
         if(pEvent->deviceInfo.rssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога
         {
             //memcpy(&CurrBaseBdAddr, pEvent->deviceInfo.addr, 6);
@@ -2212,86 +2221,53 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
  */
 static void SimpleBLEPeripheralObserver_handleKeys(uint8_t keys)
 {
-  if (keys & KEY_RIGHT)
-  {
+    timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
 
-      SendToBlink(PRF_START_STATION);
-//    uint8 status;
+    if (keys & KEY_RIGHT)
+    {
 
-//    if(scanningStarted == TRUE)
-//    {
-//      status = GAPRole_CancelDiscovery();
-//
-//      if(status == SUCCESS)
-//      {
-//        scanningStarted = FALSE;
-//        Display_print0(dispHandle, 4, 0, "Scanning Off");
-//      }
-//      else
-//      {
-//        Display_print0(dispHandle, 4, 0, "Scanning Off Fail");
-//      }
-//    }
+        SendToBlink(PRF_START_STATION);
 
-    return;
-  }
+        return;
+    }
 
-  if (keys & KEY_LEFT)
-  {
-      //uint8 status;
+    if (keys & KEY_LEFT)
+    {
+        //uint8 status;
 
-      if(cur_tag_settings.mode_tag == MODE_SLEEP)
-      {
-          uint8_t adv_enabled;
-          adv_enabled = TRUE;
-          GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
-          Util_startClock(&periodicClock);
-          ChangeWorkMode(previonsMode);
-      }
+        if(cur_tag_settings.mode_tag == MODE_SLEEP)
+        {
+            uint8_t adv_enabled;
+            adv_enabled = TRUE;
+            GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
+            Util_startClock(&periodicClock);
+            ChangeWorkMode(previonsMode);
+        }
+        return;
+    }
 
-      //Start scanning if not already scanning
-//      if (scanningStarted == FALSE)
-//      {
-//          status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
-//                                          DEFAULT_DISCOVERY_ACTIVE_SCAN,
-//                                          DEFAULT_DISCOVERY_WHITE_LIST);
-//
-//          if(status == SUCCESS)
-//          {
-//              scanningStarted = TRUE;
-//              Display_print0(dispHandle, 4, 0, "Scanning On");
-//          }
-//          else
-//          {
-//              Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
-//          }
-//      }
+    if (keys & KEY_LEFT_LONG)
+    {
+        //Display_print0(dispHandle, 4, 0, "Button left long");
 
-      return;
-  }
+        if(cur_tag_settings.mode_tag == MODE_CONNECT)
+        {
+            ChangeWorkMode(MODE_RUN);
+            return;
+        }
+        if(cur_tag_settings.mode_tag == MODE_RUN)
+        {
+            ChangeWorkMode(MODE_CONNECT);
+            return;
+        }
+    }
 
-  if (keys & KEY_LEFT_LONG)
-  {
-      //Display_print0(dispHandle, 4, 0, "Button left long");
-
-      if(cur_tag_settings.mode_tag == MODE_CONNECT)
-      {
-          ChangeWorkMode(MODE_RUN);
-          return;
-      }
-      if(cur_tag_settings.mode_tag == MODE_RUN)
-      {
-          ChangeWorkMode(MODE_CONNECT);
-          return;
-      }
-  }
-
-  if (keys & KEY_LEFT_VERYLONG)
-  {
-      //Display_print0(dispHandle, 4, 0, "Button left very long");
-      ChangeWorkMode(MODE_SLEEP);
-      return;
-  }
+    if (keys & KEY_LEFT_VERYLONG)
+    {
+        //Display_print0(dispHandle, 4, 0, "Button left very long");
+        ChangeWorkMode(MODE_SLEEP);
+        return;
+    }
 }
 
 /*********************************************************************
@@ -2594,7 +2570,6 @@ static void SimplePeripheral_connEvtCB(Gap_ConnEventRpt_t *pReport)
 
 }
 
-
 /*********************************************************************
  *
  * @brief   Creates a message and puts the message in RTOS queue.
@@ -2649,7 +2624,6 @@ static void TimeFunction(void)
 //      HCI_EXT_SetTxPowerCmd(HCI_EXT_TX_POWER_MINUS_21_DBM);
 //      Вы можете найти HCI_EXT_SetTxPowerCmd в hci.h. Вы должны использовать эту функцию в SimpleBLEPeripheral_init ().
 }
-
 
 void beep(uint16_t ms, uint8_t n)
 {
@@ -2770,10 +2744,8 @@ static void ChangeWorkMode(WORKMODE mode)
 
     case MODE_SLEEP:
         Display_print0(dispHandle, 8, 0, "MODE_SLEEP");
-
-        MyPowerDown();
-
         cur_tag_settings.mode_tag = MODE_SLEEP;
+        MyPowerDown();
         break;
 
     default:
@@ -2805,6 +2777,8 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
     }
 
     if(numCurrBase == 0) return;
+
+    timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
 
     switch (numCurrBase)
     {
@@ -2893,8 +2867,8 @@ static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
 //При уходе в сон если начат блок надо сохранить.
 static void SaveBaseTable(void)
 {
-    MoveEpromBlock(1);
-    //!!!WriteEprom_inter_osal(arBaseTable, LEN_AR_BASE_TABLE, 1);
+    MoveEpromBlock(2);
+    //!!!WriteEprom_inter_osal(arBaseTable, LEN_AR_BASE_TABLE, 2);
 }
 
 //сдвигаем блоки ПЗУ (256 байт) начиная с strtBlk вправо. Последние исчезают.
@@ -2937,13 +2911,24 @@ void MyPowerDown(void)
     // Остановить рекламу
     adv_enabled = FALSE;
     GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
+
+    if(scanningStarted == TRUE) GAPRole_CancelDiscovery();
+
     Display_printf(dispHandle, 0, 0, "Stop task BLE.");
 
     if(currPosBaseTable != 0) SaveBaseTable();
 
-    //        Display_printf(dispHandle, 0, 0, "Shutdown.");
-    //        Board_shutDownExtFlash();
-    //        Board_Power_down();
+    Task_sleepMS(100);
+
+    Board_shutDownExtFlash();
+
+    ExtFlash_open();
+    ExtFlash_close();
+
+    Display_printf(dispHandle, 0, 0, "Shutdown.");
+    Display_close(dispHandle);
+    Task_sleepMS(5000);
+    Board_Power_down();
 }
 
 

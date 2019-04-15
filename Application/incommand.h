@@ -52,7 +52,7 @@ typedef struct SPORT_TAG_SETTINGS   //len=42
     WORKMODE    mode_tag;           //режим работы
     char        name_tag[20];       //имя метки
     int         timeut_conn;        //время через которое метка уснет в сек. в режиме соединения
-    int         timeut_run;         //время через которое метка уснет в сек. в режиме забега
+    //int         timeut_run;         //время через которое метка уснет в сек. в режиме забега
     uint8_t     powerble_tag;       //мощность BLE передатчика метки от 0 (-21 дБ) до 12 (+5 дБ) см ll.h строка 404
     int8_t      treshold_tag;       //порог чувствительности метки
     char        password_tag[10];   //пароль BLE
