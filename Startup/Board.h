@@ -46,7 +46,7 @@ extern "C" {
 #include <ti/drivers/UART.h>
 #include <ti/drivers/Watchdog.h>
 
-#include "CC2640R2_LAUNCHXL.h"
+#include "CC2640R2_LAUNCHXL.h"  //Startup/
 
 #define Board_init()            CC2640R2_LAUNCHXL_initGeneral()
 #define Board_initGeneral()     CC2640R2_LAUNCHXL_initGeneral()
