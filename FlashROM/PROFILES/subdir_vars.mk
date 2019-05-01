@@ -6,7 +6,7 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/profiles/dev_info/cc26xx/devinfoservice.c \
+C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/profiles/dev_info/cc26xx/devinfoservice.c \
 ../PROFILES/gatt_uuid.c \
 ../PROFILES/gattservapp_util.c \
 ../PROFILES/myDataTransfer.c \
@@ -46,7 +46,7 @@ C_DEPS__QUOTED += \
 "PROFILES\simple_gatt_profile.d" 
 
 C_SRCS__QUOTED += \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/profiles/dev_info/cc26xx/devinfoservice.c" \
+"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/profiles/dev_info/cc26xx/devinfoservice.c" \
 "../PROFILES/gatt_uuid.c" \
 "../PROFILES/gattservapp_util.c" \
 "../PROFILES/myDataTransfer.c" \

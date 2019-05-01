@@ -70,7 +70,7 @@
 #include <ti/devices/cc26x0r2/inc/hw_ints.h>
 #include <ti/devices/cc26x0r2/inc/hw_memmap.h>
 
-#include "CC2640R2_LAUNCHXL.h"
+#include "CC2640R2_LAUNCHXL.h"  //Startup/
 
 /*
  *  =============================== ADCBuf ===============================

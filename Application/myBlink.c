@@ -331,6 +331,6 @@ void PerformBlink(void)
             else iV++;
         }
         cntV++;
-        // Board_setVibro(outR);
+        Board_setVibro(outV);
     }
 }

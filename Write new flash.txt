@@ -1,0 +1,3 @@
+1. прошить bim_oad_offchip_cc2640r2lp_app.hex
+2. sport_tag_FlashROM_oad_merged.bin
+3. сброс "board reset (free run)" с пометкой "execute selected reset..."

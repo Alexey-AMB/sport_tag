@@ -6,9 +6,9 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall.c \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_cc2650.c \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_user_config.c 
+C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall.c \
+C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_cc2650.c \
+C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_user_config.c 
 
 C_DEPS += \
 ./ICall/icall.d \
@@ -31,8 +31,8 @@ C_DEPS__QUOTED += \
 "ICall\icall_user_config.d" 
 
 C_SRCS__QUOTED += \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall.c" \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_cc2650.c" \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_user_config.c" 
+"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall.c" \
+"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_cc2650.c" \
+"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/src/icall_user_config.c" 
 
 
