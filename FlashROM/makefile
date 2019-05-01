@@ -4,7 +4,7 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := D:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS
+CG_TOOL_ROOT := C:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS
 
 GEN_OPTS__FLAG := --cmd_file="configPkg/compiler.opt"
 GEN_CMDS__FLAG := -l"configPkg/linker.cmd"
@@ -41,14 +41,14 @@ ORDERED_OBJS += \
 "./Startup/find_stack_entry.obj" \
 "./Startup/main.obj" \
 $(GEN_CMDS__FLAG) \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/rom/ble_rom_releases/cc26xx_r2/Final_Release/common_r2.symbols" \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/devices/cc26x0r2/driverlib/bin/ccs/driverlib.lib" \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/kernel/tirtos/packages/ti/dpl/lib/dpl_cc26x0r2.aem3" \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/drivers/lib/drivers_cc26x0r2.aem3" \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/display/lib/display.aem3" \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/grlib/lib/ccs/m3/grlib.a" \
--l"D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/ccs_linker_defines.cmd" \
--l"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/common/cc26xx/ccs/cc26xx_app_oad.cmd" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/rom/ble_rom_releases/cc26xx_r2/Final_Release/common_r2.symbols" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/devices/cc26x0r2/driverlib/bin/ccs/driverlib.lib" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/kernel/tirtos/packages/ti/dpl/lib/dpl_cc26x0r2.aem3" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/drivers/lib/drivers_cc26x0r2.aem3" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/display/lib/display.aem3" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/grlib/lib/ccs/m3/grlib.a" \
+-l"C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/ccs_linker_defines.cmd" \
+-l"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/common/cc26xx/ccs/cc26xx_app_oad.cmd" \
 -llibc.a \
 
 -include ../makefile.init
@@ -193,13 +193,13 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@$(MAKE) --no-print-directory -Onone "sport_tag_FlashROM.out"
 
 dependents:
-	-cd D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM && $(MAKE) all
+	-cd C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM && $(MAKE) all
 
 # Tool invocations
-sport_tag_FlashROM.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS) D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.out
+sport_tag_FlashROM.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS) C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.out
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: ARM Linker'
-	"D:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/bin/armcl" --cmd_file="D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/config/build_components.opt" --cmd_file="D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/config/factory_config.opt" --cmd_file="D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/build_config.opt" --cmd_file="D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/ccs_compiler_defines.bcfg"  -mv7M3 --code_state=16 -me -O4 --opt_for_speed=0 --define=DeviceFamily_CC26X0R2 --define=BOARD_DISPLAY_USE_LCD=0 --define=BOARD_DISPLAY_USE_UART=1 --define=BOARD_DISPLAY_USE_UART_ANSI=1 --define=CC2640R2_LAUNCHXL --define=EXT_HAL_ASSERT --define=CC26XX --define=LED_DEBUG --define=MAX_PDU_SIZE=251 --define=xOAD_BLE_SECURITY --define=HAL_IMAGE_E --define=CC26XX_R2 --define=ICALL_EVENTS --define=ICALL_JT --define=ICALL_LITE --define=ICALL_MAX_NUM_ENTITIES=6 --define=ICALL_MAX_NUM_TASKS=3 --define=POWER_SAVING --define=USE_ICALL --define=TBM_ACTIVE_ITEMS_ONLY --define=SPLIT_APP_STACK_IMAGE --define=SECURITY --define=xdc_runtime_Assert_DISABLE_ALL --define=xdc_runtime_Log_DISABLE_ALL --define=PLUS_OBSERVER -g --c99 --gcc --diag_warning=225 --diag_wrap=off --display_error_number --gen_func_subsections=on --abi=eabi -z -m"sport_tag_FlashROM.map" --heap_size=0 --stack_size=256 -i"D:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/lib" -i"D:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/include" --reread_libs --define=CC26X0ROM=2 --define=OAD_IMG_E=1 --diag_suppress=16002-D --diag_suppress=10247-D --diag_suppress=10325-D --diag_suppress=10229-D --diag_suppress=16032-D --diag_suppress=10068-D --diag_wrap=off --display_error_number --warn_sections --xml_link_info="sport_tag_FlashROM_linkInfo.xml" --rom_model -o "sport_tag_FlashROM.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/bin/armcl" --cmd_file="C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/config/build_components.opt" --cmd_file="C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/config/factory_config.opt" --cmd_file="C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/build_config.opt" --cmd_file="C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/ccs_compiler_defines.bcfg"  -mv7M3 --code_state=16 -me -O4 --opt_for_speed=0 --define=DeviceFamily_CC26X0R2 --define=BOARD_DISPLAY_USE_LCD=0 --define=BOARD_DISPLAY_USE_UART=1 --define=BOARD_DISPLAY_USE_UART_ANSI=1 --define=CC2640R2_LAUNCHXL --define=EXT_HAL_ASSERT --define=CC26XX --define=LED_DEBUG --define=MAX_PDU_SIZE=251 --define=xOAD_BLE_SECURITY --define=HAL_IMAGE_E --define=CC26XX_R2 --define=ICALL_EVENTS --define=ICALL_JT --define=ICALL_LITE --define=ICALL_MAX_NUM_ENTITIES=6 --define=ICALL_MAX_NUM_TASKS=3 --define=POWER_SAVING --define=USE_ICALL --define=TBM_ACTIVE_ITEMS_ONLY --define=SPLIT_APP_STACK_IMAGE --define=SECURITY --define=xdc_runtime_Assert_DISABLE_ALL --define=xdc_runtime_Log_DISABLE_ALL --define=PLUS_OBSERVER -g --c99 --gcc --diag_warning=225 --diag_wrap=off --display_error_number --gen_func_subsections=on --abi=eabi -z -m"sport_tag_FlashROM.map" --heap_size=0 --stack_size=256 -i"C:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/lib" -i"C:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/include" --reread_libs --define=CC26X0ROM=2 --define=OAD_IMG_E=1 --diag_suppress=16002-D --diag_suppress=10247-D --diag_suppress=10325-D --diag_suppress=10229-D --diag_suppress=16032-D --diag_suppress=10068-D --diag_wrap=off --display_error_number --warn_sections --xml_link_info="sport_tag_FlashROM_linkInfo.xml" --rom_model -o "sport_tag_FlashROM.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 	@$(MAKE) --no-print-directory post-build
@@ -207,7 +207,7 @@ sport_tag_FlashROM.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS) D:/ti/workspace_v8/simpl
 sport_tag_FlashROM.hex: $(EXE_OUTPUTS)
 	@echo 'Building files: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo 'Invoking: ARM Hex Utility'
-	"D:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/bin/armhex" --memwidth=8 --romwidth=8 --intel -o "sport_tag_FlashROM.hex" $(EXE_OUTPUTS__QUOTED)
+	"C:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/bin/armhex" --memwidth=8 --romwidth=8 --intel -o "sport_tag_FlashROM.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo ' '
 	@$(MAKE) --no-print-directory post-build
@@ -222,13 +222,13 @@ clean:
 	-@echo ' '
 
 post-build:
-	-D:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/bin/armhex -order MS --memwidth=8 --romwidth=8 --intel            -o sport_tag_FlashROM.hex sport_tag_FlashROM.out
-	-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/../../../tools/blestack/oad/oad_image_tool            ccs D:/ti/workspace_v8/sport_tag 1            -hex1 FlashROM/sport_tag_FlashROM.hex            -k D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/../../../tools/blestack/oad/private.pem            -bdf D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/ccs_compiler_defines.bcfg            -hex2 D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.hex            -o D:/ti/workspace_v8/sport_tag/FlashROM/sport_tag_FlashROM_oad
+	-C:/ti/ccsv8/tools/compiler/ti-cgt-arm_18.1.3.LTS/bin/armhex -order MS --memwidth=8 --romwidth=8 --intel            -o sport_tag_FlashROM.hex sport_tag_FlashROM.out
+	-C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/../../../tools/blestack/oad/oad_image_tool            ccs C:/ti/workspace_v8/sport_tag 1            -hex1 FlashROM/sport_tag_FlashROM.hex            -k C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/../../../tools/blestack/oad/private.pem            -bdf C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/TOOLS/ccs_compiler_defines.bcfg            -hex2 C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.hex            -o C:/ti/workspace_v8/sport_tag/FlashROM/sport_tag_FlashROM_oad
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
-D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.out:
+C:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.out:
 
 -include ../makefile.targets
 
