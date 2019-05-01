@@ -965,7 +965,6 @@ static bool ExecuteCommand(bool bHaveBuf)
 
     case CMD_SET_SETTINGS:
         memcpy((void*)&cur_tag_settings, pBuffIn, sizeof(SPORT_TAG_SETTINGS));
-        WriteEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 1);
         ApplyParam();
         SendAsk(ASK_OK, false);
         bRet = true;
@@ -1401,7 +1400,6 @@ static void SimplePeripheral_init(void)
  */
 static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
 {
-    Board_wakeUpExtFlash();
     // Initialize application
     SimplePeripheral_init();
 

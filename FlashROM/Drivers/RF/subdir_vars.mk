@@ -6,7 +6,7 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/drivers/rf/RFCC26XX_singleMode.c 
+D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/drivers/rf/RFCC26XX_singleMode.c 
 
 C_DEPS += \
 ./Drivers/RF/RFCC26XX_singleMode.d 
@@ -21,6 +21,6 @@ C_DEPS__QUOTED += \
 "Drivers\RF\RFCC26XX_singleMode.d" 
 
 C_SRCS__QUOTED += \
-"C:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/drivers/rf/RFCC26XX_singleMode.c" 
+"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/drivers/rf/RFCC26XX_singleMode.c" 
 
 

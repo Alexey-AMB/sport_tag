@@ -69,8 +69,6 @@
 #include <inc/hw_memmap.h>
 #include <driverlib/vims.h>
 
-//#include "Startup/CC2640R2_LAUNCHXL.h"
-
 #ifndef USE_DEFAULT_USER_CFG
 
 #include "ble_user_config.h"
