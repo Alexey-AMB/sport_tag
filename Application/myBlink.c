@@ -172,6 +172,15 @@ void SendToBlink(BlinkProfiles pr)
         cntR = 0;
         maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
+
+        vibroBP.bContinue = false;
+        vibroBP.dim = &change_md[0][0];
+        vibroBP.len = 4;
+
+        iV = 0;
+        cntV = 0;
+        maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
+        ignoreV = false;
         break;
     case PRF_FINISH_STATION:
         redBP.bContinue = false;
@@ -182,6 +191,15 @@ void SendToBlink(BlinkProfiles pr)
         cntR = 0;
         maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
+
+        vibroBP.bContinue = false;
+        vibroBP.dim = &change_md[0][0];
+        vibroBP.len = 4;
+
+        iV = 0;
+        cntV = 0;
+        maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
+        ignoreV = false;
         break;
     case PRF_CHANGE_MODE:
         vibroBP.bContinue = false;

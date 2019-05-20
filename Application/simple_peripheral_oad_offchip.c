@@ -238,7 +238,8 @@
 
 #define LOW                                 0
 #define HIGH                                1
-#define LEN_AR_BASE_TABLE                   256
+#define LEN_AR_BASE_TABLE                   252 //вот ТАК! а 256 не работают!
+#define BASE_SAVE_TIMEOUT                   120 //в секундах
 
 /*********************************************************************
  * TYPEDEFS
@@ -652,17 +653,25 @@ static void CheckAkkumVoltage(void)
     SendToBlink(PRF_AKK_LOW);
     return;
 }
-//чтение буфера из внутреннего ПЗУ .максимальное смещение 16 максимальный размер буфера 255
+//чтение буфера из внутреннего ПЗУ .максимальное смещение 16 максимальный размер буфера 252 (по документам 256 но не работает)
 static bool ReadEprom_inter_osal(void * buff, uint32_t lenbuff, uint32_t offset)
 {
     uint8_t iRet = 0;
 
     iRet = osal_snv_read(BLE_NVID_CUST_START + offset, lenbuff, buff);
 
-    if(iRet == SUCCESS) return true;
-    else return false;
+    if(iRet == SUCCESS)
+    {
+        Display_printf(dispHandle, 0, 0, "Read from EPROM - OK.");
+        return true;
+    }
+    else
+    {
+        Display_printf(dispHandle, 0, 0, "Read from EPROM - ERROR.");
+        return FALSE;
+    }
 }
-//запись буфера во внутреннее ПЗУ .максимальное смещение 16 максимальный размер буфера 255
+//запись буфера во внутреннее ПЗУ .максимальное смещение 16 максимальный размер буфера 252 (по документам 256 но не работает)
 static bool WriteEprom_inter_osal(void * buff, uint32_t lenbuff, uint32_t offset)
 {
     uint8_t iRet = 0;
@@ -1404,9 +1413,8 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
     Board_wakeUpExtFlash();
     // Initialize application
     SimplePeripheral_init();
-
-
     //++++++++++++++++++++++++++++
+
     ReadStartParam();
     Board_setLed0_my(0);
     Board_setLed1_my(0);
@@ -1420,11 +1428,8 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
 
     //HCI_ReadBDADDRCmd();  //делаем запрос на получение UID (мак BT) ответ получаем в HCI_READ_BDADDR
 
-
     //Display_printf(dispHandle, 0, 1, "Goto main loop");
     //Display_printf(dispHandle, 6, 0, "evenCM = %x \n", (char *)eventCM);
-
-
 
     // Application main loop
   for (;;)
@@ -2798,30 +2803,39 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
             if(currPosBaseTable > 3)
             {
                 SaveBaseTable();
+                NumLastBase = 0;
+                TimeLastBase = 0;
+                memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
+                currPosBaseTable = 0;
                 ChangeWorkMode(MODE_CONNECT);
             }
+            SendToBlink(PRF_FINISH_STATION);
         }
-        SendToBlink(PRF_FINISH_STATION);
         break;
 
     case CHECK_STATION_NUM:
-        NumLastBase = 0;
-        TimeLastBase = 0;
-        SendToBlink(PRF_NORMAL_STATION);
-
-        //!!!test_only
-        //AddBaseToList(numCurrBase, timeCurrBase);
-        //!!!
+        if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase))
+        {
+            NumLastBase = numCurrBase;
+            TimeLastBase = timeCurrBase;
+            //AddBaseToList(numCurrBase, timeCurrBase);
+            SendToBlink(PRF_NORMAL_STATION);
+        }
         break;
 
     case CLEAR_STATION_NUM:
-        memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
-        currPosBaseTable = 0;
-        SendToBlink(PRF_SIMPLEBLINK);
+        if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase))
+        {
+            NumLastBase = numCurrBase;
+            TimeLastBase = timeCurrBase;
+            memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
+            currPosBaseTable = 0;
+            SendToBlink(PRF_SIMPLEBLINK);
+        }
         break;
 
     default:
-        if(numCurrBase != NumLastBase)
+        if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase))
         {
             if(NumLastBase == START_STATION_NUM) AddBaseToList(NumLastBase, TimeLastBase);
 
@@ -2869,8 +2883,15 @@ static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
 //При уходе в сон если начат блок надо сохранить.
 static void SaveBaseTable(void)
 {
+
     MoveEpromBlock(2);
-    //!!!WriteEprom_inter_osal(arBaseTable, LEN_AR_BASE_TABLE, 2);
+    WriteEprom_inter_osal((uint8_t *)arBaseTable, LEN_AR_BASE_TABLE, 2);
+
+//    uint8_t * tmpBuf = malloc(LEN_AR_BASE_TABLE); test only!
+//
+//    ReadEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, 2);
+//
+//    free(tmpBuf);
 }
 
 //сдвигаем блоки ПЗУ (256 байт) начиная с strtBlk вправо. Последние исчезают.
@@ -2887,7 +2908,7 @@ static bool MoveEpromBlock(uint8_t strtBlk)
     for(iNumCurrBlock = MAXBLOKSEPROM - 1; iNumCurrBlock >= strtBlk; iNumCurrBlock -= 1)
     {
         ReadEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock);
-        //!!!WriteEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock + 1);
+        WriteEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, iNumCurrBlock + 1);
         Display_printf(dispHandle, 0, 0, "Shift blok."); //test
     }
 

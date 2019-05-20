@@ -77,7 +77,7 @@ extern "C" {
 #include <ti/devices/cc26x0r2/driverlib/ioc.h>
 
 /* Externs */
-extern const PIN_Config BoardGpioInitTable[];
+extern const PIN_Config BoardGpioInitTable1[];
 
 /* Defines */
 #ifndef CC2640R2_LAUNCHXL
@@ -128,7 +128,7 @@ extern const PIN_Config BoardGpioInitTable[];
 #define CC2640R2_LAUNCHXL_DIO16_TDO             IOID_16
 #define CC2640R2_LAUNCHXL_DIO17_TDI             IOID_17
 #define CC2640R2_LAUNCHXL_DIO21                 IOID_21   //my_test
-#define CC2640R2_LAUNCHXL_SPI_MASTER_READY      IOID_15
+#define CC2640R2_LAUNCHXL_SPI_MASTER_READY1     IOID_15
 #define CC2640R2_LAUNCHXL_DIO22                 IOID_22
 
 /* Discrete Inputs */

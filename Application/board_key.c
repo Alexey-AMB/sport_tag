@@ -65,7 +65,7 @@
 
 #include "util.h"
 #include "board_key.h"
-#include "board.h" // Startup/
+#include "Startup/board.h"
 
 /*********************************************************************
  * TYPEDEFS
@@ -132,7 +132,7 @@ PIN_Config ledPinTable[] = {
                             Board_PIN_LED0 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW  | PIN_PUSHPULL | PIN_DRVSTR_MAX,
                             Board_PIN_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW  | PIN_PUSHPULL | PIN_DRVSTR_MAX,
                             //Board_DIO21    | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
-                            Board_SPI_MASTER_READY | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+                            Board_SPI_MASTER_READY | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,    //vibro
                             PIN_TERMINATE
 };
 

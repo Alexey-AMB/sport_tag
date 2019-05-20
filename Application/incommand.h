@@ -9,7 +9,7 @@ typedef enum InCommand
     CMD_GET_AKKVOLTAGE,     //пришли напряжение на аккумуляторе
     CMD_SET_BLINK,          //помигай лампочками
     //CMD_WRITE_DATA,         //запиши данные
-    CMD_READ_DATA,          //считай данные
+    CMD_READ_DATA,          //считай данные в буфере номер блока от 2 до 15
     CMD_SET_MODE_RUN,
     CMD_SET_MODE_CONN,
     CMD_SET_MODE_SLEEP,

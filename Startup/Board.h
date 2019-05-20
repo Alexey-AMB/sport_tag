@@ -46,7 +46,7 @@ extern "C" {
 #include <ti/drivers/UART.h>
 #include <ti/drivers/Watchdog.h>
 
-#include "CC2640R2_LAUNCHXL.h"  //Startup/
+#include "Startup/CC2640R2_LAUNCHXL.h"  //Startup/
 
 #define Board_init()            CC2640R2_LAUNCHXL_initGeneral()
 #define Board_initGeneral()     CC2640R2_LAUNCHXL_initGeneral()
@@ -139,7 +139,7 @@ extern "C" {
 
 #define Board_SPI_MASTER        CC2640R2_LAUNCHXL_SPI0
 #define Board_SPI_SLAVE         CC2640R2_LAUNCHXL_SPI0
-#define Board_SPI_MASTER_READY  CC2640R2_LAUNCHXL_SPI_MASTER_READY
+#define Board_SPI_MASTER_READY  CC2640R2_LAUNCHXL_SPI_MASTER_READY1
 #define Board_SPI_SLAVE_READY   CC2640R2_LAUNCHXL_SPI_SLAVE_READY
 #define Board_UART0             CC2640R2_LAUNCHXL_UART0
 

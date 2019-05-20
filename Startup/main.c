@@ -69,7 +69,7 @@
 #include <inc/hw_memmap.h>
 #include <driverlib/vims.h>
 
-//#include "Startup/CC2640R2_LAUNCHXL.h"
+#include "Startup/CC2640R2_LAUNCHXL.h"
 
 #ifndef USE_DEFAULT_USER_CFG
 
@@ -139,7 +139,7 @@ int main()
   /* Register Application callback to trap asserts raised in the Stack */
   RegisterAssertCback(AssertHandler);
 
-  PIN_init(BoardGpioInitTable);
+  PIN_init(BoardGpioInitTable1);
 
   Power_init();
 

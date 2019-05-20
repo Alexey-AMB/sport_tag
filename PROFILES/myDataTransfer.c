@@ -314,7 +314,7 @@ bStatus_t MyDataTransfer_SetParameter( uint8_t param, uint16_t len, void *value 
   switch ( param )
   {
     case MYDATATRANSFER_MYBUFIN1_ID:
-      if ( len <= MYDATATRANSFER_MYBUFIN1_LEN ) //!!! было ==
+      if ( len <= MYDATATRANSFER_MYBUFIN1_LEN ) // было ==
       {
         memcpy(myDataTransfer_MyBufIn1Val, value, len);
 
@@ -369,7 +369,7 @@ bStatus_t MyDataTransfer_GetParameter( uint8_t param, uint16_t *len, void *value
   {
     case MYDATATRANSFER_MYBUFOUT1_ID:
       memcpy(value, myDataTransfer_MyBufOut1Val, MYDATATRANSFER_MYBUFOUT1_LEN);
-      *len = sizeof(myDataTransfer_MyBufOut1Val);   //!!!test
+      *len = sizeof(myDataTransfer_MyBufOut1Val);   // test
       break;
 
     case MYDATATRANSFER_MYBUFOUT2_ID:
