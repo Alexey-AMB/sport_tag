@@ -26,7 +26,7 @@
 								<listOptionValue builtIn="false" value="INACTIVE_REPOS="/>
 								<listOptionValue builtIn="false" value="EXPANDED_REPOS="/>
 								<listOptionValue builtIn="false" value="CCS_MBS_VERSION=6.1.3"/>
-								<listOptionValue builtIn="false" value="PRODUCTS=com.ti.SIMPLELINK_CC2640R2_SDK:2.40.0.32;"/>
+								<listOptionValue builtIn="false" value="PRODUCTS=com.ti.SIMPLELINK_CC2640R2_SDK:3.10.0.15;"/>
 								<listOptionValue builtIn="false" value="PRODUCT_MACRO_IMPORTS={&quot;com.ti.SIMPLELINK_CC2640R2_SDK&quot;:[&quot;${COM_TI_SIMPLELINK_CC2640R2_SDK_INCLUDE_PATH}&quot;,&quot;${COM_TI_SIMPLELINK_CC2640R2_SDK_LIBRARY_PATH}&quot;,&quot;${COM_TI_SIMPLELINK_CC2640R2_SDK_LIBRARIES}&quot;,&quot;${COM_TI_SIMPLELINK_CC2640R2_SDK_SYMBOLS}&quot;,&quot;${COM_TI_SIMPLELINK_CC2640R2_SDK_SYSCONFIG_MANIFEST}&quot;]}"/>
 								<listOptionValue builtIn="false" value="RTSC_MBS_VERSION=7.0.0"/>
 								<listOptionValue builtIn="false" value="OUTPUT_TYPE=rtscApplication:executable"/>
@@ -178,6 +178,7 @@
 									<listOptionValue builtIn="false" value="${SRC_BLE_DIR}/../../../source"/>
 									<listOptionValue builtIn="false" value="${SRC_BLE_DIR}/../../../kernel/tirtos/packages"/>
 									<listOptionValue builtIn="false" value="${SRC_BLE_DIR}"/>
+									<listOptionValue builtIn="false" value="${COM_TI_SIMPLELINK_CC2640R2_SDK_INSTALL_DIR_REPOS}"/>
 								</option>
 								<option id="com.ti.rtsc.buildDefinitions.XDC_3.16.tool.TARGET.1155187679" name="Target (-t)" superClass="com.ti.rtsc.buildDefinitions.XDC_3.16.tool.TARGET" value="ti.targets.arm.elf.M3" valueType="string"/>
 								<option id="com.ti.rtsc.buildDefinitions.XDC_3.16.tool.PLATFORM.1563137349" name="Platform (-p)" superClass="com.ti.rtsc.buildDefinitions.XDC_3.16.tool.PLATFORM" value="ti.platforms.simplelink:CC2640R2F" valueType="string"/>

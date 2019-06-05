@@ -13,7 +13,8 @@ typedef enum InCommand
     CMD_SET_MODE_RUN,
     CMD_SET_MODE_CONN,
     CMD_SET_MODE_SLEEP,
-    CMD_NEXT
+    CMD_NEXT,
+    CMD_GET_VERSION         //Версия софта int32
 }InCommand;
 
 #pragma pack(push, 1)

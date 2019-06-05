@@ -6,8 +6,8 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/app/ble_user_config.c \
-D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/app/icall_api_lite.c 
+D:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/icall/app/ble_user_config.c \
+D:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/icall/app/icall_api_lite.c 
 
 C_DEPS += \
 ./ICallBLE/ble_user_config.d \
@@ -26,7 +26,7 @@ C_DEPS__QUOTED += \
 "ICallBLE\icall_api_lite.d" 
 
 C_SRCS__QUOTED += \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/app/ble_user_config.c" \
-"D:/ti/simplelink_cc2640r2_sdk_2_40_00_32/source/ti/blestack/icall/app/icall_api_lite.c" 
+"D:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/icall/app/ble_user_config.c" \
+"D:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/icall/app/icall_api_lite.c" 
 
 

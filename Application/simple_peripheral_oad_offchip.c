@@ -409,6 +409,9 @@ uint8_t currPosBaseTable = 0;
 
 uint32_t timeShutdown = 0;
 
+uint32_t SoftVersion = 2;    //версия ПО
+
+//================================================
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -1053,6 +1056,23 @@ static bool ExecuteCommand(bool bHaveBuf)
         }
         break;
 
+    case CMD_GET_VERSION:
+    {
+        pBuffOut = malloc(sizeof(uint32_t));
+        if (!pBuffOut)
+        {
+            SendAsk(ASK_ERROR, false);
+            bRet = false;
+            break;
+        }
+        iBuffOutLen = sizeof(uint32_t);
+        memset(pBuffOut, 0, sizeof(uint32_t));
+        memcpy(pBuffOut, &SoftVersion, sizeof(uint32_t));
+        SendAsk(ASK_OK, true);
+        bRet = true;
+        break;
+    }
+
     default:
         SendAsk(ASK_ERROR, false);
         bRet = false;
@@ -1424,6 +1444,7 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
 
     ApplyParam();
     timeShutdown = Seconds_get() + cur_tag_settings.timeut_conn;
+    Display_printf(dispHandle, 8, 0, "Version software = %x.", SoftVersion);
     //================================
 
     //HCI_ReadBDADDRCmd();  //делаем запрос на получение UID (мак BT) ответ получаем в HCI_READ_BDADDR
