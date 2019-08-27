@@ -614,7 +614,7 @@ static void ReadStartParam(void)
     strcpy(cur_tag_settings.password_tag, "111111");
     cur_tag_settings.timeut_conn = 600;
     //cur_tag_settings.timeut_run = 600;
-    cur_tag_settings.treshold_tag = -40;
+    cur_tag_settings.treshold_tag = -60;
 
 
     memset((void*)cur_tag_settings.fam, 0, sizeof(cur_tag_settings.fam));
@@ -959,28 +959,37 @@ static bool ExecuteCommand(bool bHaveBuf)
 
     case CMD_SET_MODE_RUN:
         ChangeWorkMode(MODE_RUN);
-        SendAsk(ASK_OK, false);
+        //SendAsk(ASK_OK, false);
         bRet = true;
         break;
 
     case CMD_SET_MODE_CONN:
         ChangeWorkMode(MODE_CONNECT);
-        SendAsk(ASK_OK, false);
+        //SendAsk(ASK_OK, false);
         bRet = true;
         break;
 
     case CMD_SET_MODE_SLEEP:
         ChangeWorkMode(MODE_SLEEP);
-        SendAsk(ASK_OK, false);
+        //SendAsk(ASK_OK, false);
         bRet = true;
         break;
 
     case CMD_SET_SETTINGS:
         memcpy((void*)&cur_tag_settings, pBuffIn, sizeof(SPORT_TAG_SETTINGS));
-        WriteEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 1);
-        ApplyParam();
-        SendAsk(ASK_OK, false);
-        bRet = true;
+		if(cur_tag_settings.signature == SIGNATURE_EPROM_SETTINGS)
+		{
+			WriteEprom_inter_osal((void *)&cur_tag_settings, sizeof(SPORT_TAG_SETTINGS), 1);
+			ApplyParam();
+			SendAsk(ASK_OK, false);
+			bRet = true;
+		}
+		else
+		{
+			ReadStartParam();
+			SendAsk(ASK_ERROR, false);
+			bRet = false;
+		}
         break;
 
     case CMD_SET_TIME:
@@ -1198,7 +1207,7 @@ static void SimplePeripheral_init(void)
   // Setup the GAP Peripheral Role Profile
   {
     // For all hardware platforms, device starts advertising upon initialization
-    uint8_t initialAdvertEnable = TRUE;
+    uint8_t initialAdvertEnable = FALSE;
 
     // By setting this to zero, the device will go into the waiting state after
     // being discoverable for 30.72 second, and will not being advertising again
@@ -2691,14 +2700,14 @@ static bool ChangeAdvertisingData(void)
     if(buf == NULL) return false;
     memset(buf, ' ', lenbuf);
 
-    if(strlen(cur_tag_settings.fam) == 0)   //в рекламе не должно быть завершающих нулей
-    {
+    //if(strlen(cur_tag_settings.fam) == 0)   //в рекламе не должно быть завершающих нулей
+    //{
         memcpy(buf, cur_tag_settings.name_tag, min(strlen(cur_tag_settings.name_tag), lenbuf));
-    }
-    else
-    {
-        memcpy(buf, cur_tag_settings.fam, min(strlen(cur_tag_settings.fam), lenbuf));
-    }
+    //}
+    //else
+    //{
+        //memcpy(buf, cur_tag_settings.fam, min(strlen(cur_tag_settings.fam), lenbuf));
+    //}
 
     memcpy(scanRspData + 2, buf, lenbuf);
 
@@ -2881,7 +2890,7 @@ static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
 
     if(currPosBaseTable >= LEN_AR_BASE_TABLE - sizeof(pageData))
     {
-        //Display_printf(dispHandle, 0, 0, "Save table."); //test
+        //Display_printf(dispHandle, 0, 0, "Save table. End of block."); //test
         SaveBaseTable();        //дошли до конца блока
         memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
         currPosBaseTable = 0;

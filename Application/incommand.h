@@ -48,7 +48,7 @@ typedef enum WORKMODE
 
 
 #pragma pack(push, 1)
-typedef struct SPORT_TAG_SETTINGS   //len=42
+typedef struct SPORT_TAG_SETTINGS   //len=140
 {
     WORKMODE    mode_tag;           //режим работы
     char        name_tag[20];       //им€ метки
@@ -59,7 +59,6 @@ typedef struct SPORT_TAG_SETTINGS   //len=42
     char        password_tag[10];   //пароль BLE
 
     //USER_SETTINGS        //len=103
-
     char        fam[20];        //фамили€
     char        imj[20];        //им€
     char        otch[20];       //отчество

@@ -7,6 +7,5 @@
 *.map
 *.opt
 *.launch
-FlashROM/*.*
-FlashROM\*.*
-
+FlashROM/
+TOOLS/

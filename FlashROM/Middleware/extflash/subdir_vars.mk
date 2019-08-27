@@ -6,7 +6,7 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-D:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/common/cc26xx/flash_interface/external/ExtFlash.c 
+C:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/common/cc26xx/flash_interface/external/ExtFlash.c 
 
 C_DEPS += \
 ./Middleware/extflash/ExtFlash.d 
@@ -21,6 +21,6 @@ C_DEPS__QUOTED += \
 "Middleware\extflash\ExtFlash.d" 
 
 C_SRCS__QUOTED += \
-"D:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/common/cc26xx/flash_interface/external/ExtFlash.c" 
+"C:/ti/simplelink_cc2640r2_sdk_3_10_00_15/source/ti/blestack/common/cc26xx/flash_interface/external/ExtFlash.c" 
 
 
