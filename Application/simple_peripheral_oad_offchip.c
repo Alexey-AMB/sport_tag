@@ -239,7 +239,8 @@
 #define LOW                                 0
 #define HIGH                                1
 #define LEN_AR_BASE_TABLE                   252 //вот ТАК! а 256 не работают!
-#define BASE_SAVE_TIMEOUT                   120 //в секундах
+#define BASE_SAVE_TIMEOUT                   60 //в секундах
+#define BASE_SAVE_SERVICE_TIMEOUT           10 //в секундах
 
 /*********************************************************************
  * TYPEDEFS
@@ -409,7 +410,7 @@ uint8_t currPosBaseTable = 0;
 
 uint32_t timeShutdown = 0;
 
-uint32_t SoftVersion = 2;    //версия ПО
+uint32_t SoftVersion = 3;    //версия ПО
 
 //================================================
 /*********************************************************************
@@ -2837,14 +2838,18 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
                 TimeLastBase = 0;
                 memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
                 currPosBaseTable = 0;
+                SendToBlink(PRF_FINISH_STATION);
+
+                Task_sleepMS(5000);
                 ChangeWorkMode(MODE_CONNECT);
+                break;
             }
             SendToBlink(PRF_FINISH_STATION);
         }
         break;
 
     case CHECK_STATION_NUM:
-        if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase))
+        if((timeCurrBase - TimeLastBase > BASE_SAVE_SERVICE_TIMEOUT)||(numCurrBase != NumLastBase))
         {
             NumLastBase = numCurrBase;
             TimeLastBase = timeCurrBase;
@@ -2854,7 +2859,7 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
         break;
 
     case CLEAR_STATION_NUM:
-        if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase))
+        if((timeCurrBase - TimeLastBase > BASE_SAVE_SERVICE_TIMEOUT)||(numCurrBase != NumLastBase))
         {
             NumLastBase = numCurrBase;
             TimeLastBase = timeCurrBase;
