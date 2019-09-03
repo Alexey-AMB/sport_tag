@@ -84,3 +84,10 @@ typedef struct SPORT_TAG_SETTINGS   //len=140
 #define CHECK_STATION_NUM         248
 // «арезервированный номер станции очистки
 #define CLEAR_STATION_NUM         249
+
+typedef enum DiscoveryMode
+{
+    DISCOVERY_NORMAL,
+    DISCOVERY_TURBO,
+    DISCOVERY_SLOW
+}DiscoveryMode;

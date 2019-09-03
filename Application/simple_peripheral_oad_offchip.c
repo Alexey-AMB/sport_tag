@@ -142,18 +142,18 @@
 
 #ifdef PLUS_OBSERVER
 // Maximum number of scan responses
-#define DEFAULT_MAX_SCAN_RES                  15
+#define DEFAULT_MAX_SCAN_RES                  0 //15
 
 // Scan parameters
-#define DEFAULT_SCAN_DURATION                 298   //4000
-#define DEFAULT_SCAN_WIND                     177   //80
-#define DEFAULT_SCAN_INT                      177   //(240 * 0.625) = 150 ms //80
+#define DEFAULT_SCAN_DURATION                 0 //298   //4000
+#define DEFAULT_SCAN_WIND                     176   //80    окно <= интервал
+#define DEFAULT_SCAN_INT                      176   //(240 * 0.625) = 150 ms //80   интервал сканирования по одному каналу (из трех)
 
 // Discovey mode (limited, general, all)
 #define DEFAULT_DISCOVERY_MODE                DEVDISC_MODE_ALL
 
 // TRUE to use active scan
-#define DEFAULT_DISCOVERY_ACTIVE_SCAN         TRUE
+#define DEFAULT_DISCOVERY_ACTIVE_SCAN         FALSE
 
 // TRUE to use white list during discovery
 #define DEFAULT_DISCOVERY_WHITE_LIST          FALSE
@@ -362,7 +362,7 @@ static uint8_t rspTxRetry = 0;
 
 #ifdef PLUS_OBSERVER
 // Scanning started flag
-static bool scanningStarted = FALSE;
+//static bool scanningStarted = FALSE;
 
 const char *AdvTypeStrings[] = {
   "Connectable undirected",
@@ -410,7 +410,7 @@ uint8_t currPosBaseTable = 0;
 
 uint32_t timeShutdown = 0;
 
-uint32_t SoftVersion = 3;    //версия ПО
+uint32_t SoftVersion = 4;    //версия ПО
 
 //================================================
 /*********************************************************************
@@ -479,6 +479,8 @@ static bool MoveEpromBlock(uint8_t strtBlk);
 
 static void ChangeWorkMode(WORKMODE mode);
 void MyPowerDown(void);
+void ChangeDiscoveryMode(DiscoveryMode mode);
+static bool FindBaseString(uint8_t * pBuf, uint8_t len);
 //================================================
 
 /*********************************************************************
@@ -635,6 +637,7 @@ static void ApplyParam(void)
     HCI_EXT_SetTxPowerCmd(cur_tag_settings.powerble_tag);   //значения от 0 до 12 см. ll.h
 
     ChangeAdvertisingData();
+    //ChangeDiscoveryMode(DISCOVERY_NORMAL);
     ChangeWorkMode(cur_tag_settings.mode_tag);
 
     Task_sleepMS(10);
@@ -1602,27 +1605,27 @@ static void SimplePeripheral_performPeriodicTask(void)
 {
     PerformBlink();
 
-    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock.
-    {
-        if(cur_tag_settings.mode_tag == MODE_RUN)
-        {
-            uint8 status;
-
-            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
-                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                                            DEFAULT_DISCOVERY_WHITE_LIST);
-
-            if(status == SUCCESS)
-            {
-                scanningStarted = TRUE;
-                //Display_print0(dispHandle, 4, 0, "Scanning On");
-            }
-            else
-            {
-                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
-            }
-        }
-    }
+//    if (scanningStarted == FALSE)   //Да, это лоховство, но по другому получаем DeadLock.
+//    {
+//        if(cur_tag_settings.mode_tag == MODE_RUN)
+//        {
+//            uint8 status;
+//
+//            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+//                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+//                                            DEFAULT_DISCOVERY_WHITE_LIST);
+//
+//            if(status == SUCCESS)
+//            {
+//                scanningStarted = TRUE;
+//                //Display_print0(dispHandle, 4, 0, "Scanning On");
+//            }
+//            else
+//            {
+//                Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
+//            }
+//        }
+//    }
 
     if(Seconds_get() > timeShutdown) MyPowerDown();
 }
@@ -2190,6 +2193,8 @@ char *Util_convertBytes2Str(uint8_t *pData, uint8_t length)
   return str;
 }
 
+
+int iRssiOld = -100;
 /*********************************************************************
  * @fn      SimpleBLEPeripheralObserver_processRoleEvent
  *
@@ -2201,11 +2206,43 @@ char *Util_convertBytes2Str(uint8_t *pData, uint8_t length)
  */
 static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *pEvent)
 {
+    int iRssi = -70;
+
     switch (pEvent->gap.opcode)
     {
     case GAP_DEVICE_INFO_EVENT:
 
-        if(pEvent->deviceInfo.rssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога
+        if (FindBaseString(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen))
+        {   //это реклама от нашей базы
+            iRssi = (iRssiOld + pEvent->deviceInfo.rssi);
+            iRssi = iRssi / 2;
+            iRssiOld = pEvent->deviceInfo.rssi;
+
+            if (iRssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога0
+            {
+                WorkWithDiscoBase(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen);
+                //Display_print0(dispHandle, 7, 0, "Tr=0");
+            }
+            else if (iRssi > (cur_tag_settings.treshold_tag - 10)) //сигнал сильнее порога1
+            {
+                ChangeDiscoveryMode(DISCOVERY_TURBO);
+                //Display_print0(dispHandle, 7, 0, "Tr=1");
+            }
+            else if (iRssi > (cur_tag_settings.treshold_tag - 20)) //сигнал сильнее порога2
+            {
+                ChangeDiscoveryMode(DISCOVERY_NORMAL);
+                //Display_print0(dispHandle, 7, 0, "Tr=2");
+            }
+            else
+            {
+                //Display_print0(dispHandle, 7, 0, "Tr=_");
+            }
+            //Display_print1(dispHandle, 6, 0, "Advertising Addr: %s ", Util_convertBdAddr2Str(pEvent->deviceInfo.addr));
+        }
+
+
+
+        /*if(pEvent->deviceInfo.rssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога0
         {
             //memcpy(&CurrBaseBdAddr, pEvent->deviceInfo.addr, 6);
             //Print scan response data otherwise advertising data
@@ -2217,11 +2254,11 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
             else
             {
                 Display_print2(dispHandle, 6, 0, "Advertising Addr: %s Advertising Type: %s", Util_convertBdAddr2Str(pEvent->deviceInfo.addr), AdvTypeStrings[pEvent->deviceInfo.eventType]);
-                Display_print1(dispHandle, 7, 0, "Advertising Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
+                //Display_print1(dispHandle, 7, 0, "Advertising Data: %s", Util_convertBytes2Str(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen));
 
-                WorkWithDiscoBase(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen);
+                //WorkWithDiscoBase(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen);
             }
-        }
+        }*/
 
         ICall_free(pEvent->deviceInfo.pEvtData);
         ICall_free(pEvent);
@@ -2230,7 +2267,7 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
 
     case GAP_DEVICE_DISCOVERY_EVENT:
         // discovery complete
-        scanningStarted = FALSE;
+        //scanningStarted = FALSE;
 
         //Display_print0(dispHandle, 7, 0, "GAP_DEVICE_DISC_EVENT");
         //Display_print1(dispHandle, 5, 0, "Devices discovered: %d", pEvent->discCmpl.numDevs);
@@ -2740,7 +2777,8 @@ static void ChangeWorkMode(WORKMODE mode)
     case MODE_CONNECT:
         Display_print0(dispHandle, 8, 0, "MODE_CONNECT");
         previonsMode = cur_tag_settings.mode_tag;
-        if(scanningStarted == TRUE) status = GAPRole_CancelDiscovery();
+        //if(scanningStarted == TRUE)
+            status = GAPRole_CancelDiscovery();
         if(status == SUCCESS)
         {
             Display_print0(dispHandle, 4, 0, "CancelDiscovery");
@@ -2763,20 +2801,27 @@ static void ChangeWorkMode(WORKMODE mode)
         GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
         cur_tag_settings.mode_tag = MODE_RUN;
         //Start scanning if not already scanning
-        if (scanningStarted == FALSE)
-        {
-            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE, DEFAULT_DISCOVERY_ACTIVE_SCAN, DEFAULT_DISCOVERY_WHITE_LIST);
+        //if (scanningStarted == FALSE)
+        //{
+        ChangeDiscoveryMode(DISCOVERY_TURBO);
+
+        GAP_SetParamValue(TGAP_SCAN_RSP_RSSI_MIN, -100); //     порог при обнаружении
+        GAP_SetParamValue(TGAP_FILTER_ADV_REPORTS, FALSE);  //  показывать обрабатывать рекламу от уже обработанного устройства
+
+            status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
+                                            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+                                            DEFAULT_DISCOVERY_WHITE_LIST);
 
             if(status == SUCCESS)
             {
-                scanningStarted = TRUE;
+                //scanningStarted = TRUE;
                 Display_print0(dispHandle, 4, 0, "Scanning On");
             }
             else
             {
                 Display_print1(dispHandle, 4, 0, "Scanning failed: %d", status);
             }
-        }
+        //}
         SendToBlink(PRF_MODE_RUN);
         break;
 
@@ -2966,11 +3011,14 @@ void MyPowerDown(void)
     // Отключаем соединение
     GAPRole_TerminateConnection();
 
+    ChangeDiscoveryMode(DISCOVERY_NORMAL);
+
     // Остановить рекламу
     adv_enabled = FALSE;
     GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
 
-    if(scanningStarted == TRUE) GAPRole_CancelDiscovery();
+    //if(scanningStarted == TRUE)
+        GAPRole_CancelDiscovery();
 
     Display_printf(dispHandle, 0, 0, "Stop task BLE.");
 
@@ -2988,6 +3036,45 @@ void MyPowerDown(void)
     Task_sleepMS(5000);
     Board_Power_down();
 }
+//переключаемся в быстрый режим дисковери
+void ChangeDiscoveryMode(DiscoveryMode mode)
+{
+    //GAPCentralRole_CancelDiscovery();
 
+    switch (mode)
+    {
+    case DISCOVERY_NORMAL:
+        GAP_SetParamValue(TGAP_GEN_DISC_SCAN_INT, 500);     //312 msec
+        GAP_SetParamValue(TGAP_GEN_DISC_SCAN_WIND, 1600);   //1 sec
+        break;
+    case DISCOVERY_SLOW:
+        GAP_SetParamValue(TGAP_GEN_DISC_SCAN_INT, 1000);
+        GAP_SetParamValue(TGAP_GEN_DISC_SCAN_WIND, 3200);
+        break;
+    case DISCOVERY_TURBO:
+        GAP_SetParamValue(TGAP_GEN_DISC_SCAN_INT, 176);     //110 msec
+        GAP_SetParamValue(TGAP_GEN_DISC_SCAN_WIND, 176);
+        break;
+    }
+
+    //GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE, FALSE, FALSE);
+}
+//обнаружение посылки рекламы от нашей базы
+static bool FindBaseString(uint8_t * pBuf, uint8_t len)
+{
+    if (len < 11) return FALSE;
+
+    uint8_t i;
+    uint8_t tmp[5] = {'B', 'A', 'S', 'E', '_' };
+
+    for (i = 0; i < (len - 5); i++)
+    {
+        if (memcmp(pBuf + i, &tmp, 5) == 0)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
 
 
