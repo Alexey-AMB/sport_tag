@@ -21,7 +21,8 @@ typedef enum BlinkProfiles
     PRF_FINISH_STATION,
 
     PRF_CHANGE_MODE,
-    PRF_MODE_RUN,
+    PRF_MODE_RUN_NORM,
+    PRF_MODE_RUN_TURB,
     PRF_MODE_CONNECT,
 
     PRF_POWER_ON,

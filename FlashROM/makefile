@@ -193,7 +193,7 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@$(MAKE) --no-print-directory -Onone "sport_tag_FlashROM.out"
 
 dependents:
-	-cd D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM && $(MAKE) all
+	-cd D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM && $(MAKE) clean all
 
 # Tool invocations
 sport_tag_FlashROM.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS) D:/ti/workspace_v8/simple_peripheral_cc2640r2lp_oad_offchip_stack/FlashROM/simple_peripheral_cc2640r2lp_oad_offchip_stack_FlashROM.out

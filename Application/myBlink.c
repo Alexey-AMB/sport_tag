@@ -69,11 +69,17 @@ uint8_t change_md[4][2] ={  {5, 1},    //vibro
                             {20, 1},
                             {30, 0}
                         };
-uint8_t run_md[4][2] =  {   {2, 1},    //green
+uint8_t run_md_n[4][2] =  { {4, 1},    //green
+                            {8, 0},
+                            {12, 1},
+                            {16, 0}
+                        };
+uint8_t run_md_t[4][2] =  { {2, 1},    //green
                             {4, 0},
                             {6, 1},
                             {8, 0}
                         };
+
 uint8_t conn_md[4][2] =  {  {50, 1},    //green
                             {52, 1},
                             {102, 1},
@@ -211,9 +217,19 @@ void SendToBlink(BlinkProfiles pr)
         maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
         ignoreV = false;
         break;
-    case PRF_MODE_RUN:
+    case PRF_MODE_RUN_NORM:
         greenBP.bContinue = true;
-        greenBP.dim = &run_md[0][0];
+        greenBP.dim = &run_md_n[0][0];
+        greenBP.len = 4;
+
+        iG = 0;
+        cntG = 0;
+        maxG = *(greenBP.dim + (greenBP.len - 1) * 2);
+        ignoreG = false;
+        break;
+    case PRF_MODE_RUN_TURB:
+        greenBP.bContinue = true;
+        greenBP.dim = &run_md_t[0][0];
         greenBP.len = 4;
 
         iG = 0;
