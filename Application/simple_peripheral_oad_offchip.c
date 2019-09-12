@@ -139,7 +139,7 @@
 // How often to perform periodic event (in msec)
 #define SBP_PERIODIC_EVT_PERIOD               100
 // врем€ в течении которого продолжаем слушать рекламу баз в турбо режиме (сек)
-#define SBP_TIMEOUT_TURBODISCO_PERIOD         5000
+#define SBP_TIMEOUT_TURBODISCO_PERIOD         15000
 
 
 #ifdef PLUS_OBSERVER
@@ -423,7 +423,9 @@ uint32_t timeShutdown = 0;
 
 uint8_t  iCountDisco = 0;
 
-uint32_t SoftVersion = 5;    //верси€ ѕќ
+bool    bLockEprom = FALSE;
+
+uint32_t SoftVersion = 6;    //верси€ ѕќ
 
 //================================================
 /*********************************************************************
@@ -650,7 +652,6 @@ static void ApplyParam(void)
     HCI_EXT_SetTxPowerCmd(cur_tag_settings.powerble_tag);   //значени€ от 0 до 12 см. ll.h
 
     ChangeAdvertisingData();
-    //ChangeDiscoveryMode(DISCOVERY_NORMAL);
     ChangeWorkMode(cur_tag_settings.mode_tag);
 
     Task_sleepMS(10);
@@ -1197,7 +1198,7 @@ static void SimplePeripheral_init(void)
 
     //my
     GAP_SetParamValue(TGAP_SCAN_RSP_RSSI_MIN, MIN_LEVEL_DISCOVERY); //     порог при обнаружении
-    GAP_SetParamValue(TGAP_FILTER_ADV_REPORTS, FALSE);  //  показывать обрабатывать рекламу от уже обработанного устройства
+    //GAP_SetParamValue(TGAP_FILTER_ADV_REPORTS, FALSE);  //  показывать обрабатывать рекламу от уже обработанного устройства
 
     // Scan interval and window the same for all scenarios
     GAP_SetParamValue(TGAP_CONN_SCAN_INT, DEFAULT_SCAN_INT);
@@ -2181,7 +2182,7 @@ static void SimplePeripheral_processStateChangeEvt(gaprole_States_t newState)
       break;
 
     case GAPROLE_ERROR:
-      Display_print0(dispHandle, SBP_ROW_STATUS1, 0, "Error");
+      Display_print0(dispHandle, SBP_ROW_STATUS1, 0, "Error GAPROLE_ERROR");
       break;
 
     default:
@@ -2236,10 +2237,11 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
     {
     case GAP_DEVICE_INFO_EVENT:
 
-        if (FindBaseString(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen))
+        if (FindBaseString(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen)&&(!bLockEprom))
         {   //это реклама от нашей базы
-            iRssi = (iRssiOld + pEvent->deviceInfo.rssi);
-            iRssi = iRssi / 2;
+            //iRssi = (iRssiOld + pEvent->deviceInfo.rssi);
+            //iRssi = iRssi / 2;
+            iRssi = pEvent->deviceInfo.rssi;
             iRssiOld = pEvent->deviceInfo.rssi;
 
             if (iRssi > cur_tag_settings.treshold_tag) //сигнал сильнее порога0
@@ -2808,8 +2810,11 @@ static void ChangeWorkMode(WORKMODE mode)
     switch(mode)
     {
     case MODE_CONNECT:
-        Display_print0(dispHandle, 8, 0, "MODE_CONNECT");
         previonsMode = cur_tag_settings.mode_tag;
+        Display_print0(dispHandle, 8, 0, "MODE_CONNECT");
+        cur_tag_settings.mode_tag = MODE_CONNECT;
+
+        if (Util_isActive(&turbodiscoClock)) Util_stopClock(&turbodiscoClock);
         if (scanningStarted == TRUE)
         {
             status = GAPRole_CancelDiscovery();
@@ -2824,11 +2829,11 @@ static void ChangeWorkMode(WORKMODE mode)
                 Display_print1(dispHandle, 4, 0, "Scanning stop failed: %d", status);
             }
         }
-        cur_tag_settings.mode_tag = MODE_CONNECT;
 
+        //Task_sleepMS(10);
         adv_enabled = TRUE;
         GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
-
+        Display_print0(dispHandle, 4, 0, "Advertising...");
         SendToBlink(PRF_MODE_CONNECT);
         break;
 
@@ -2865,6 +2870,7 @@ static void ChangeWorkMode(WORKMODE mode)
     case MODE_SLEEP:
         Display_print0(dispHandle, 8, 0, "MODE_SLEEP");
         cur_tag_settings.mode_tag = MODE_SLEEP;
+        if (Util_isActive(&turbodiscoClock)) Util_stopClock(&turbodiscoClock);
         MyPowerDown();
         break;
 
@@ -2915,6 +2921,8 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
             AddBaseToList(numCurrBase, timeCurrBase);
             if(currPosBaseTable > 3)
             {
+                ChangeWorkMode(MODE_CONNECT);
+
                 SaveBaseTable();
                 NumLastBase = 0;
                 TimeLastBase = 0;
@@ -2922,8 +2930,8 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
                 currPosBaseTable = 0;
                 SendToBlink(PRF_FINISH_STATION);
 
-                Task_sleepMS(5000);
-                ChangeWorkMode(MODE_CONNECT);
+
+                //ChangeWorkMode(MODE_CONNECT);
                 break;
             }
             SendToBlink(PRF_FINISH_STATION);
@@ -3000,15 +3008,11 @@ static void AddBaseToList(uint8_t numBase, uint32_t timeBase)
 //ѕри уходе в сон если начат блок надо сохранить.
 static void SaveBaseTable(void)
 {
-
+    ChangeDiscoveryMode(DISCOVERY_NORMAL);
+    bLockEprom = TRUE;
     MoveEpromBlock(2);
     WriteEprom_inter_osal((uint8_t *)arBaseTable, LEN_AR_BASE_TABLE, 2);
-
-//    uint8_t * tmpBuf = malloc(LEN_AR_BASE_TABLE); test only!
-//
-//    ReadEprom_inter_osal(tmpBuf, LEN_AR_BASE_TABLE, 2);
-//
-//    free(tmpBuf);
+    bLockEprom = FALSE;
 }
 
 //сдвигаем блоки ѕ«” (256 байт) начина€ с strtBlk вправо. ѕоследние исчезают.
@@ -3048,8 +3052,6 @@ void MyPowerDown(void)
     // ќтключаем соединение
     GAPRole_TerminateConnection();
 
-    ChangeDiscoveryMode(DISCOVERY_NORMAL);
-
     // ќстановить рекламу
     adv_enabled = FALSE;
     GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
@@ -3076,6 +3078,7 @@ void MyPowerDown(void)
 void ChangeDiscoveryMode(DiscoveryMode mode)
 {
     //GAPCentralRole_CancelDiscovery();
+    if(cur_tag_settings.mode_tag != MODE_RUN)  return;
 
     switch (mode)
     {
@@ -3085,6 +3088,9 @@ void ChangeDiscoveryMode(DiscoveryMode mode)
             GAPRole_CancelDiscovery();
             scanningStarted = FALSE;
         }
+
+        GAP_SetParamValue(TGAP_FILTER_ADV_REPORTS, TRUE);  //HE  показывать обрабатывать рекламу от уже обработанного устройства
+
         GAP_SetParamValue(TGAP_GEN_DISC_SCAN, DEFAULT_SCAN_DURATION);
         GAP_SetParamValue(TGAP_GEN_DISC_SCAN_INT, 500);     //330 msec
         GAP_SetParamValue(TGAP_GEN_DISC_SCAN_WIND, 500);    //330 msec
@@ -3096,6 +3102,8 @@ void ChangeDiscoveryMode(DiscoveryMode mode)
 
         break;
     case DISCOVERY_TURBO:
+        GAP_SetParamValue(TGAP_FILTER_ADV_REPORTS, FALSE);  //показывать обрабатывать рекламу от уже обработанного устройства
+
         GAP_SetParamValue(TGAP_GEN_DISC_SCAN, 0);
         GAP_SetParamValue(TGAP_GEN_DISC_SCAN_INT, 176);     //110 msec
         GAP_SetParamValue(TGAP_GEN_DISC_SCAN_WIND, 176);
