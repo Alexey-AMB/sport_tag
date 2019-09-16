@@ -108,7 +108,7 @@
  */
 
 // Advertising interval when device is discoverable (units of 625us, 160=100ms)
-#define DEFAULT_ADVERTISING_INTERVAL          160
+#define DEFAULT_ADVERTISING_INTERVAL          800   //= 500 мсек. было 160
 
 // Limited discoverable mode advertises for 30.72s, and then stops
 // General discoverable mode advertises indefinitely
@@ -138,7 +138,7 @@
 
 // How often to perform periodic event (in msec)
 #define SBP_PERIODIC_EVT_PERIOD               100
-// время в течении которого продолжаем слушать рекламу баз в турбо режиме (сек)
+// время в течении которого продолжаем слушать рекламу баз в турбо режиме (мсек)
 #define SBP_TIMEOUT_TURBODISCO_PERIOD         15000
 
 
@@ -425,7 +425,7 @@ uint8_t  iCountDisco = 0;
 
 bool    bLockEprom = FALSE;
 
-uint32_t SoftVersion = 6;    //версия ПО
+uint32_t SoftVersion = 7;    //версия ПО
 
 //================================================
 /*********************************************************************
@@ -496,6 +496,7 @@ static void ChangeWorkMode(WORKMODE mode);
 void MyPowerDown(void);
 void ChangeDiscoveryMode(DiscoveryMode mode);
 static bool FindBaseString(uint8_t * pBuf, uint8_t len);
+static bool FindInList(uint8_t numBase, uint32_t timeBase);
 //================================================
 
 /*********************************************************************
@@ -2929,9 +2930,6 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
                 memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
                 currPosBaseTable = 0;
                 SendToBlink(PRF_FINISH_STATION);
-
-
-                //ChangeWorkMode(MODE_CONNECT);
                 break;
             }
             SendToBlink(PRF_FINISH_STATION);
@@ -2959,15 +2957,18 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
         }
         break;
 
-    default:
-        if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase))
+    default:    //обычная база
+        //if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase)) //!!!
         {
-            if(NumLastBase == START_STATION_NUM) AddBaseToList(NumLastBase, TimeLastBase);
+            if (NumLastBase == START_STATION_NUM) AddBaseToList(NumLastBase, TimeLastBase);
 
             NumLastBase = numCurrBase;
             TimeLastBase = timeCurrBase;
-            AddBaseToList(numCurrBase, timeCurrBase);
-            SendToBlink(PRF_NORMAL_STATION);
+            if (!FindInList(numCurrBase, timeCurrBase))
+            {
+                AddBaseToList(numCurrBase, timeCurrBase);
+                SendToBlink(PRF_NORMAL_STATION);
+            }
         }
         break;
     }
@@ -3132,6 +3133,35 @@ static bool FindBaseString(uint8_t * pBuf, uint8_t len)
     }
     return FALSE;
 }
+//проверка по таблице в ОЗУ была ли эта база и вышел ли таймаут по ней
+static bool FindInList(uint8_t numBase, uint32_t timeBase)
+{
+    bool bRet = FALSE;
+    uint8_t i;
+    uint8_t pageData[4];
+    uint32_t timeInList;
+
+    if(currPosBaseTable < 4) return FALSE;
+
+    for(i = 4; i < currPosBaseTable; i += 4)
+    {
+        if(numBase == arBaseTable[i])
+        {
+            memset(pageData, 0, 4);
+            //memcpy(pageData, arBaseTable + i, 4);
+            pageData[0] = arBaseTable[i + 3];
+            pageData[1] = arBaseTable[i + 2];
+            pageData[2] = arBaseTable[i + 1];
+            pageData[3] = arBaseTable[3];
+            memcpy(&timeInList, pageData, 4);
+            if(timeBase - timeInList < BASE_SAVE_TIMEOUT) bRet = TRUE;
+        }
+    }
+    return bRet;
+}
+
+
+
 
 
 
