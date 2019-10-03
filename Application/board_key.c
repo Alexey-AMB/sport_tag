@@ -56,6 +56,7 @@
 #include <ti/drivers/Power.h>
 
 #include <ti/drivers/pin/PINCC26XX.h>
+#include <ti/drivers/PWM.h>
 
 #ifdef USE_ICALL
 #include <icall.h>
@@ -132,7 +133,7 @@ PIN_Config ledPinTable[] = {
                             Board_PIN_LED0 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW  | PIN_PUSHPULL | PIN_DRVSTR_MAX,
                             Board_PIN_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW  | PIN_PUSHPULL | PIN_DRVSTR_MAX,
                             //Board_DIO21    | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
-                            Board_SPI_MASTER_READY | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,    //vibro
+                            //Board_SPI_MASTER_READY | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,    //vibro
                             PIN_TERMINATE
 };
 
@@ -140,6 +141,12 @@ PIN_Config ledPinTable[] = {
 PIN_Config ButtonTableWakeUp[] = {
                                   Board_PIN_BUTTON0     | PIN_INPUT_EN | PIN_PULLUP | PINCC26XX_WAKEUP_NEGEDGE, PIN_TERMINATE                                 /* Terminate list */
 };
+
+
+PWM_Handle pwm1 = 0;
+PWM_Params params;
+bool bSoundActive = FALSE;
+
 
 /*********************************************************************
  * PUBLIC FUNCTIONS
@@ -202,6 +209,28 @@ void Board_initLeds(void)
 {
     ledPinHandle = PIN_open(&ledPinState, ledPinTable);
 }
+
+bool Board_initSound(void)
+{
+    bool bRet = FALSE;
+
+    uint32_t pwmPeriod = 250;
+    uint32_t duty = (uint32_t) (((uint64_t) PWM_DUTY_FRACTION_MAX * 50) / 100); //50%
+
+    PWM_init();
+
+    PWM_Params_init(&params);
+    params.dutyUnits = PWM_DUTY_FRACTION;
+    params.dutyValue = duty;
+    params.periodUnits = PWM_PERIOD_US;
+    params.periodValue = pwmPeriod;
+    params.idleLevel = PWM_IDLE_HIGH;//этот вывод с инверсией
+    pwm1 = PWM_open(CC2640R2_LAUNCHXL_PWM2, &params);
+    if (pwm1 != NULL) bRet = TRUE;
+    else while(1) ;
+    return bRet;
+}
+
 void Board_setLed0_my(uint8_t iVal)
 {
     PIN_setOutputValue(ledPinHandle, Board_PIN_LED0, iVal);
@@ -210,18 +239,44 @@ void Board_setLed1_my(uint8_t iVal)
 {
     PIN_setOutputValue(ledPinHandle, Board_PIN_LED1, iVal);
 }
-//void Board_setCS(uint8_t iVal)
-//{
-//    PIN_setOutputValue(ledPinHandle, Board_DIO21, iVal);
-//}
-void Board_setVibro(uint8_t iVal)   //Вывод инверсный. Инвертирование здесь!
+
+//iVal - период в *10 мкс (25 = 250мкс = 4000 Гц)
+void Board_setSound(uint8_t iVal)
+{
+    if (pwm1 != 0)
+    {
+        if (iVal == 0)
+        {
+            PWM_stop(pwm1);
+            bSoundActive = FALSE;
+            return;
+        }
+        else
+        {
+            PWM_setPeriod(pwm1, iVal * 10);
+            if (!bSoundActive)
+            {
+                PWM_start(pwm1);
+                bSoundActive = TRUE;
+            }
+        }
+    }
+}
+
+/*void Board_setVibro(uint8_t iVal)   //Вывод инверсный. Инвертирование здесь!
 {
     uint8_t nval = iVal ^ 1;
     PIN_setOutputValue(ledPinHandle, Board_SPI_MASTER_READY, nval);
-}
+}*/
 
 void Board_Power_down(void)
 {
+    if (pwm1 != 0)
+    {
+        PWM_stop(pwm1);
+        PWM_close(pwm1);
+    }
+
     /* Configure DIO for wake up from shutdown */
     PINCC26XX_setWakeup(ButtonTableWakeUp);
 
@@ -346,3 +401,45 @@ static void Board_keyChangeHandler_verylong(UArg a0)
 }
 /*********************************************************************
  *********************************************************************/
+
+
+/*
+void TestRunPwm(void)
+{
+    uint32_t pwmPeriod = 250;
+    uint32_t duty = (uint32_t) (((uint64_t) PWM_DUTY_FRACTION_MAX * 50) / 100); //50%
+
+    PWM_Handle pwm1 = NULL;
+    PWM_Params params;
+
+    PWM_init();
+
+    PWM_Params_init(&params);
+    params.dutyUnits = PWM_DUTY_FRACTION;
+    params.dutyValue = duty;
+    params.periodUnits = PWM_PERIOD_US;
+    params.periodValue = pwmPeriod;
+    params.idleLevel = PWM_IDLE_HIGH;   //этот вывод с инверсией
+    pwm1 = PWM_open(CC2640R2_LAUNCHXL_PWM2, &params);
+    if (pwm1 == NULL)
+    {
+        while (1) ;  Board_PWM0 did not open
+    }
+
+    while (1)
+    {
+        PWM_start(pwm1);
+
+        PWM_setPeriod(pwm1, 250);
+        Task_sleepMS(100);
+        PWM_setPeriod(pwm1, 300);
+        Task_sleepMS(100);
+        PWM_setPeriod(pwm1, 350);
+        Task_sleepMS(100);
+
+        PWM_stop(pwm1);
+        Task_sleepMS(1500);
+    }
+
+}
+*/

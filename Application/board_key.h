@@ -102,10 +102,13 @@ void Board_initKeys(keysPressedCB_t appKeyCB);
 //my_test
 void Board_initLeds(void);
 
+bool Board_initSound(void);
+
 void Board_setLed0_my(uint8_t iVal);
 void Board_setLed1_my(uint8_t iVal);
 void Board_setCS(uint8_t iVal);
-void Board_setVibro(uint8_t iVal);
+//void Board_setVibro(uint8_t iVal);
+void Board_setSound(uint8_t iVal);
 uint8_t Board_getLed_my(void);
 void Task_sleepMS(uint32_t period); //task sleep in miliseconds
 void Board_Power_down(void);

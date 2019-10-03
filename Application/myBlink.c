@@ -18,6 +18,13 @@ uint8_t simpleblink[6][2] ={{10, 1},    //red
                             {50, 1},
                             {52, 0}
                         };
+uint8_t simpleblink_v[6][2] ={{10, 25},    //sound
+                            {20, 0},
+                            {30, 25},
+                            {40, 0},
+                            {50, 0},
+                            {52, 0}
+                        };
 uint8_t akk_full[6][2] ={   {10, 1},    //red
                             {15, 0},
                             {25, 1},
@@ -57,6 +64,13 @@ uint8_t normal_st[10][2] ={ {30, 1},    //red
                             {90, 1},
                             {95, 0}
                         };
+uint8_t normal_st_v[6][2] ={{30, 25},    //vibro
+                            {34, 0},
+                            {38, 15},
+                            {48, 0},
+                            {50, 0},
+                            {55, 0}
+                        };
 uint8_t finish_st[6][2] ={  {30, 1},    //red
                             {35, 0},
                             {55, 1},
@@ -64,10 +78,10 @@ uint8_t finish_st[6][2] ={  {30, 1},    //red
                             {70, 1},
                             {72, 0}
                         };
-uint8_t change_md[4][2] ={  {5, 1},    //vibro
-                            {15, 0},
-                            {20, 1},
-                            {30, 0}
+uint8_t change_md[4][2] ={  {2, 20},    //vibro
+                            {4, 25},
+                            {6, 20},
+                            {8, 0}
                         };
 uint8_t run_md_n[4][2] =  { {4, 1},    //green
                             {8, 0},
@@ -85,15 +99,15 @@ uint8_t conn_md[4][2] =  {  {50, 1},    //green
                             {102, 1},
                             {104, 1}
                         };
-uint8_t on_pw[4][2] =  {    {5, 1},    //vibro
-                            {10, 0},
-                            {15, 0},
-                            {20, 0}
+uint8_t on_pw[4][2] =  {    {2, 20},    //vibro
+                            {4, 25},
+                            {6, 30},
+                            {8, 0}
                         };
-uint8_t off_pw[4][2] =  {   {10, 1},    //vibro
-                            {15, 0},
-                            {25, 1},
-                            {30, 0}
+uint8_t off_pw[4][2] =  {   {2, 35},    //vibro
+                            {4, 30},
+                            {6, 25},
+                            {8, 0}
                         };
 
 BLINK_PROFILE redBP;
@@ -128,6 +142,15 @@ void SendToBlink(BlinkProfiles pr)
         cntR = 0;
         maxR = *(redBP.dim + (redBP.len - 1) * 2);
         ignoreR = false;
+
+        vibroBP.bContinue = false;
+        vibroBP.dim = &simpleblink_v[0][0];
+        vibroBP.len = 6;
+
+        iV = 0;
+        cntV = 0;
+        maxV = *(vibroBP.dim + (vibroBP.len - 1) * 2);
+        ignoreV = false;
         break;
     case PRF_AKK_FULL:
         redBP.bContinue = false;
@@ -180,8 +203,8 @@ void SendToBlink(BlinkProfiles pr)
         ignoreR = false;
 
         vibroBP.bContinue = false;
-        vibroBP.dim = &change_md[0][0];
-        vibroBP.len = 4;
+        vibroBP.dim = &normal_st_v[0][0];
+        vibroBP.len = 6;
 
         iV = 0;
         cntV = 0;
@@ -365,6 +388,7 @@ void PerformBlink(void)
             else iV++;
         }
         cntV++;
-        Board_setVibro(outV);
+        //Board_setVibro(outV);
+        Board_setSound(outV);
     }
 }

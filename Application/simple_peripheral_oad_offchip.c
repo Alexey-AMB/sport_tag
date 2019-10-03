@@ -176,7 +176,7 @@
 
 // Warning! To optimize RAM, task stack size must be a multiple of 8 bytes
 #ifndef SBP_TASK_STACK_SIZE
-  #define SBP_TASK_STACK_SIZE                   1024
+  #define SBP_TASK_STACK_SIZE                   888
 #endif
 
 // Row numbers
@@ -425,7 +425,7 @@ uint8_t  iCountDisco = 0;
 
 bool    bLockEprom = FALSE;
 
-uint32_t SoftVersion = 7;    //версия ПО
+uint32_t SoftVersion = 8;    //версия ПО
 
 //================================================
 /*********************************************************************
@@ -1183,6 +1183,7 @@ static void SimplePeripheral_init(void)
   ADC_init();
   Board_initKeys(SimplePeripheral_keyChangeHandler);
   Board_initLeds();
+  Board_initSound();
   InitBlink();
   
   #ifdef PLUS_OBSERVER
@@ -1469,7 +1470,7 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
     ReadStartParam();
     Board_setLed0_my(0);
     Board_setLed1_my(0);
-    Board_setVibro(0);
+    Board_setSound(0);
     CheckAkkumVoltage();
     TimeFunction();
 
@@ -3048,7 +3049,6 @@ void MyPowerDown(void)
 
     Board_setLed0_my(0);
     Board_setLed1_my(0);
-    Board_setVibro(0);
 
     // Отключаем соединение
     GAPRole_TerminateConnection();
