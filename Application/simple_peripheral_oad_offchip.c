@@ -176,7 +176,7 @@
 
 // Warning! To optimize RAM, task stack size must be a multiple of 8 bytes
 #ifndef SBP_TASK_STACK_SIZE
-  #define SBP_TASK_STACK_SIZE                   888
+  #define SBP_TASK_STACK_SIZE                 704
 #endif
 
 // Row numbers
@@ -416,7 +416,7 @@ stCommand * curCmd = NULL;
 uint8_t NumLastBase = 0;
 uint32_t TimeLastBase = 0;
 
-uint8_t arBaseTable[LEN_AR_BASE_TABLE];
+uint8_t * arBaseTable = NULL;  //[LEN_AR_BASE_TABLE];
 uint8_t currPosBaseTable = 0;
 
 uint32_t timeShutdown = 0;
@@ -1567,6 +1567,13 @@ static void SimplePeripheral_taskFxn(UArg a0, UArg a1)
       // OAD Queue processing
       if(events & SBP_OAD_QUEUE_EVT)
       {
+
+          if (arBaseTable != NULL)
+          {
+              free(arBaseTable);
+              arBaseTable = NULL;
+          }
+
         // Process the OAD Message Queue
         uint8_t status = OAD_processQueue();
 
@@ -2849,6 +2856,12 @@ static void ChangeWorkMode(WORKMODE mode)
         GAPRole_SetParameter(GAPROLE_ADVERT_ENABLED, sizeof (uint8_t), & adv_enabled);
         cur_tag_settings.mode_tag = MODE_RUN;
 
+        if(arBaseTable == NULL)
+        {
+            arBaseTable =  malloc(LEN_AR_BASE_TABLE);
+            if(arBaseTable) memset(arBaseTable, 0, LEN_AR_BASE_TABLE);
+        }
+
         if (scanningStarted == FALSE)   //Start scanning if not already scanning
         {
             //ChangeDiscoveryMode(DISCOVERY_TURBO);
@@ -2893,6 +2906,8 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
     uint32_t timeCurrBase = 0;
 
     if(len < 11) return;
+
+    if(arBaseTable == NULL) return;
 
     for(i=0; i < (len - 5); i++)
     {
@@ -2959,9 +2974,11 @@ static void WorkWithDiscoBase(uint8_t * pBuf, uint8_t len)
         break;
 
     default:    //обычная база
-        //if((timeCurrBase - TimeLastBase > BASE_SAVE_TIMEOUT)||(numCurrBase != NumLastBase)) //!!!
         {
-            if (NumLastBase == START_STATION_NUM) AddBaseToList(NumLastBase, TimeLastBase);
+            if (NumLastBase == START_STATION_NUM)
+            {
+                if (!FindInList(NumLastBase, TimeLastBase)) AddBaseToList(NumLastBase, TimeLastBase);
+            }
 
             NumLastBase = numCurrBase;
             TimeLastBase = timeCurrBase;
@@ -3061,7 +3078,10 @@ void MyPowerDown(void)
 
     Display_printf(dispHandle, 0, 0, "Stop task BLE.");
 
-    if(currPosBaseTable != 0) SaveBaseTable();
+    if(arBaseTable != NULL)
+    {
+        if(currPosBaseTable != 0) SaveBaseTable();
+    }
 
     Task_sleepMS(100);
 
@@ -3145,14 +3165,14 @@ static bool FindInList(uint8_t numBase, uint32_t timeBase)
 
     for(i = 4; i < currPosBaseTable; i += 4)
     {
-        if(numBase == arBaseTable[i])
+        if(numBase == *(arBaseTable + i))
         {
             memset(pageData, 0, 4);
             //memcpy(pageData, arBaseTable + i, 4);
-            pageData[0] = arBaseTable[i + 3];
-            pageData[1] = arBaseTable[i + 2];
-            pageData[2] = arBaseTable[i + 1];
-            pageData[3] = arBaseTable[3];
+            pageData[0] = *(arBaseTable + i + 3);
+            pageData[1] = *(arBaseTable + i + 2);
+            pageData[2] = *(arBaseTable + i + 1);
+            pageData[3] = *(arBaseTable + 3);
             memcpy(&timeInList, pageData, 4);
             if(timeBase - timeInList < BASE_SAVE_TIMEOUT) bRet = TRUE;
         }

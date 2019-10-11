@@ -104,6 +104,8 @@ void Board_initLeds(void);
 
 bool Board_initSound(void);
 
+void Board_closeSound(void);
+
 void Board_setLed0_my(uint8_t iVal);
 void Board_setLed1_my(uint8_t iVal);
 void Board_setCS(uint8_t iVal);

@@ -64,6 +64,8 @@
 #include "oad_image_header.h"
 #include "find_stack_entry.h"
 
+#include <driverlib/sys_ctrl.h>
+
 
 /* Header files required to enable instruction fetch cache */
 #include <inc/hw_memmap.h>
@@ -246,6 +248,9 @@ void AssertHandler(uint8 assertCause, uint8 assertSubcause)
   }
 
   Display_print0(dispHandle, 0, 0, ">>>STACK ASSERT");
+
+  //if(NotDebug)
+  SysCtrlSystemReset();
 
   // check the assert cause
   switch (assertCause)

@@ -231,6 +231,16 @@ bool Board_initSound(void)
     return bRet;
 }
 
+void Board_closeSound(void)
+{
+    if (pwm1 != 0)
+    {
+        PWM_stop(pwm1);
+        PWM_close(pwm1);
+        pwm1 = 0;
+    }
+}
+
 void Board_setLed0_my(uint8_t iVal)
 {
     PIN_setOutputValue(ledPinHandle, Board_PIN_LED0, iVal);
@@ -271,11 +281,7 @@ void Board_setSound(uint8_t iVal)
 
 void Board_Power_down(void)
 {
-    if (pwm1 != 0)
-    {
-        PWM_stop(pwm1);
-        PWM_close(pwm1);
-    }
+    Board_closeSound();
 
     /* Configure DIO for wake up from shutdown */
     PINCC26XX_setWakeup(ButtonTableWakeUp);
