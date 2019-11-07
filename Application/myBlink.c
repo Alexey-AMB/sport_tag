@@ -201,10 +201,10 @@ uint8_t * change_md(void)
 
 uint8_t * run_md_n(void)
 {
-    uint8_t run_md_n[4][2] =  { {4, 1},    //green
-                                {8, 0},
-                                {12, 1},
-                                {16, 0}
+    uint8_t run_md_n[4][2] =  { {2, 1},    //green
+                                {18, 0},
+                                {20, 1},
+                                {36, 0}
                             };
     uint8_t * buf = malloc(sizeof(run_md_n));
     if (buf != NULL)

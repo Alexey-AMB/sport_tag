@@ -246,6 +246,7 @@
 #define LEN_AR_BASE_TABLE                   252 //вот ТАК! а 256 не работают!
 #define BASE_SAVE_TIMEOUT                   60 //в секундах
 #define BASE_SAVE_SERVICE_TIMEOUT           10 //в секундах
+#define COUNT_DISCOVERY_MAX                 30  //интервал между включениями поиска баз в нормальном режиме *100 ms
 
 /*********************************************************************
  * TYPEDEFS
@@ -425,7 +426,7 @@ uint8_t  iCountDisco = 0;
 
 bool    bLockEprom = FALSE;
 
-uint32_t SoftVersion = 8;    //версия ПО
+uint32_t SoftVersion = 9;    //версия ПО
 
 //================================================
 /*********************************************************************
@@ -653,6 +654,7 @@ static void ApplyParam(void)
     HCI_EXT_SetTxPowerCmd(cur_tag_settings.powerble_tag);   //значения от 0 до 12 см. ll.h
 
     ChangeAdvertisingData();
+    cur_tag_settings.mode_tag = MODE_RUN;
     ChangeWorkMode(cur_tag_settings.mode_tag);
 
     Task_sleepMS(10);
@@ -1642,7 +1644,7 @@ static void SimplePeripheral_performPeriodicTask(void)
         if (cur_tag_settings.mode_tag == MODE_RUN)
         {
             uint8 status;
-            if (iCountDisco > 5) //пауза в 5*100ms
+            if (iCountDisco > COUNT_DISCOVERY_MAX) // было 5 //пауза в 5*100ms
             {
                 status = GAPRole_StartDiscovery(DEFAULT_DISCOVERY_MODE,
                                                 DEFAULT_DISCOVERY_ACTIVE_SCAN,
@@ -2261,15 +2263,17 @@ static void SimpleBLEPeripheralObserver_processRoleEvent(gapPeriObsRoleEvent_t *
                     ChangeDiscoveryMode(DISCOVERY_TURBO);
                 }
                 WorkWithDiscoBase(pEvent->deviceInfo.pEvtData, pEvent->deviceInfo.dataLen);
+                iCountDisco = COUNT_DISCOVERY_MAX;
                 //Display_print0(dispHandle, 7, 0, "Tr=0");
             }
-            else if (iRssi > (cur_tag_settings.treshold_tag - 15)) //сигнал сильнее порога1
+            else if (iRssi > (-90))     //было cur_tag_settings.treshold_tag - 15)) //сигнал сильнее порога1
             {
                 if (!Util_isActive(&turbodiscoClock))
                 {
                     Util_restartClock(&turbodiscoClock, SBP_TIMEOUT_TURBODISCO_PERIOD);
                     ChangeDiscoveryMode(DISCOVERY_TURBO);
                 }
+                iCountDisco = COUNT_DISCOVERY_MAX;
                 //Display_print0(dispHandle, 7, 0, "Tr=1");
             }
 //            else if (iRssi > (cur_tag_settings.treshold_tag - 20)) //сигнал сильнее порога2
@@ -2885,7 +2889,7 @@ static void ChangeWorkMode(WORKMODE mode)
     case MODE_SLEEP:
         Display_print0(dispHandle, 8, 0, "MODE_SLEEP");
         cur_tag_settings.mode_tag = MODE_SLEEP;
-        if (Util_isActive(&turbodiscoClock)) Util_stopClock(&turbodiscoClock);
+        //if (Util_isActive(&turbodiscoClock)) Util_stopClock(&turbodiscoClock);
         MyPowerDown();
         break;
 
@@ -3063,6 +3067,7 @@ void MyPowerDown(void)
 
     //Останавливаем таймер
     Util_stopClock(&periodicClock);
+    Util_stopClock(&turbodiscoClock);
 
     Board_setLed0_my(0);
     Board_setLed1_my(0);

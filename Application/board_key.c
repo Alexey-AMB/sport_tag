@@ -224,7 +224,7 @@ bool Board_initSound(void)
     params.dutyValue = duty;
     params.periodUnits = PWM_PERIOD_US;
     params.periodValue = pwmPeriod;
-    params.idleLevel = PWM_IDLE_HIGH;//этот вывод с инверсией
+    params.idleLevel = PWM_IDLE_LOW;
     pwm1 = PWM_open(CC2640R2_LAUNCHXL_PWM2, &params);
     if (pwm1 != NULL) bRet = TRUE;
     else while(1) ;
@@ -282,6 +282,12 @@ void Board_setSound(uint8_t iVal)
 void Board_Power_down(void)
 {
     Board_closeSound();
+
+    Util_stopClock(&keyChangeClock_short);
+    Util_stopClock(&keyChangeClock_long);
+    Util_stopClock(&keyChangeClock_verylong);
+
+    //PIN_close(ledPinHandle);
 
     /* Configure DIO for wake up from shutdown */
     PINCC26XX_setWakeup(ButtonTableWakeUp);
